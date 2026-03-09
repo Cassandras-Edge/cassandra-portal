@@ -8,6 +8,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "cassandra-observability": "github:DigiBugCat/cassandra-observability",
     "hono": "^4.12.5"
   },
   "devDependencies": {

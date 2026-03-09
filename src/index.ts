@@ -1,8 +1,31 @@
 import { Hono } from "hono";
+import { pushMetrics, counter } from "cassandra-observability";
 import { runnerProxy } from "./runner-proxy";
 import { mcpKeys } from "./mcp-keys";
 
 const app = new Hono<{ Bindings: Env }>();
+
+// Metrics middleware — track all requests
+app.use("*", async (c, next) => {
+  const start = Date.now();
+  await next();
+  const duration = Date.now() - start;
+  const path = new URL(c.req.url).pathname;
+  const isApi = path.startsWith("/api/");
+  c.executionCtx.waitUntil(
+    pushMetrics(c.env, [
+      counter("mcp_requests_total", 1, {
+        service: "portal",
+        status: String(c.res.status),
+        path: isApi ? path : "/",
+      }),
+      counter("mcp_request_duration_ms_total", duration, {
+        service: "portal",
+        path: isApi ? path : "/",
+      }),
+    ]),
+  );
+});
 
 // Mount API routes
 app.route("/", runnerProxy);

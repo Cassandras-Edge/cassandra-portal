@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { pushMetrics, counter } from "cassandra-observability";
 
 interface McpKeyMeta {
   name: string;
@@ -71,6 +72,12 @@ app.post("/api/mcp-keys", async (c) => {
 
   await c.env.MCP_KEYS.put(key, JSON.stringify(meta));
 
+  c.executionCtx.waitUntil(
+    pushMetrics(c.env, [
+      counter("mcp_key_operations_total", 1, { operation: "create", service: meta.service }),
+    ]),
+  );
+
   return c.json({
     key,
     name: meta.name,
@@ -86,7 +93,15 @@ app.delete("/api/mcp-keys/:key", async (c) => {
   const existing = await c.env.MCP_KEYS.get(key);
   if (!existing) return c.json({ error: "key not found" }, 404);
 
+  const meta = JSON.parse(existing) as McpKeyMeta;
   await c.env.MCP_KEYS.delete(key);
+
+  c.executionCtx.waitUntil(
+    pushMetrics(c.env, [
+      counter("mcp_key_operations_total", 1, { operation: "delete", service: meta.service }),
+    ]),
+  );
+
   return c.json({ ok: true });
 });
 
