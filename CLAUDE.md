@@ -15,15 +15,17 @@ cassandra-portal/
 ├── infra/
 │   └── modules/
 │       └── portal-edge/  # Terraform: MCP_KEYS KV, DNS, CF Access
-├── wrangler.jsonc
+├── wrangler.jsonc.example   # wrangler.jsonc is gitignored (has real KV IDs)
 ├── package.json
 └── tsconfig.json
 ```
 
 ## Deploy
 
+Worker auto-deploys on push to main via GitHub Actions (`deploy.yml`). `wrangler.jsonc` is templated from repo secrets at deploy time.
+
 ```bash
-# Worker (manual deploy)
+# Manual deploy (if needed)
 npm install
 npx wrangler deploy
 
