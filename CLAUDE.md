@@ -39,7 +39,17 @@ tofu apply
 - `RUNNER_URL` — Runner orchestrator URL
 - `RUNNER_ADMIN_KEY` — Admin API key for runner /tenants routes
 - `DOMAIN` — Root domain for link generation
+- `VM_PUSH_URL` — VictoriaMetrics push endpoint for Worker metrics
+- `VM_PUSH_CLIENT_ID` — CF Access service token client ID
+- `VM_PUSH_CLIENT_SECRET` — CF Access service token client secret
 
 ## Bindings
 
 - `MCP_KEYS` — Shared KV namespace for MCP API keys (from Terraform output)
+
+## Observability
+
+Pushes metrics to VictoriaMetrics on every request via `cassandra-observability`:
+- `mcp_requests_total` — request count by status/path
+- `mcp_request_duration_ms_total` — latency
+- `mcp_key_operations_total` — key create/delete by service
