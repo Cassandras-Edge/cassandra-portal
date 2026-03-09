@@ -6,15 +6,40 @@ interface McpKeyMeta {
   service: string;
   created_at: string;
   created_by: string;
+  credentials?: Record<string, string>;
+}
+
+interface CredentialField {
+  key: string;
+  label: string;
+  required: boolean;
+}
+
+interface McpService {
+  id: string;
+  name: string;
+  description: string;
+  status: "active" | "planned";
+  credentialsSchema?: CredentialField[];
 }
 
 // Registry of available MCP services (add new services here)
-const MCP_SERVICES = [
+const MCP_SERVICES: McpService[] = [
   {
     id: "yt-mcp",
     name: "yt-mcp",
     description: "Video & Audio Transcription",
-    status: "active" as const,
+    status: "active",
+  },
+  {
+    id: "pushover",
+    name: "pushover",
+    description: "Push Notifications",
+    status: "active",
+    credentialsSchema: [
+      { key: "pushover_user_key", label: "Pushover User Key", required: true },
+      { key: "pushover_api_token", label: "Pushover API Token", required: true },
+    ],
   },
 ];
 
@@ -35,6 +60,7 @@ app.get("/api/mcp-keys", async (c) => {
     service: string;
     created_at: string;
     created_by: string;
+    has_credentials: boolean;
   }> = [];
 
   for (const item of list.keys) {
@@ -47,6 +73,7 @@ app.get("/api/mcp-keys", async (c) => {
         service: meta.service,
         created_at: meta.created_at,
         created_by: meta.created_by,
+        has_credentials: !!meta.credentials && Object.keys(meta.credentials).length > 0,
       });
     }
   }
@@ -55,12 +82,22 @@ app.get("/api/mcp-keys", async (c) => {
 });
 
 app.post("/api/mcp-keys", async (c) => {
-  const body = await c.req.json<{ name?: string; service?: string }>();
+  const body = await c.req.json<{ name?: string; service?: string; credentials?: Record<string, string> }>();
   if (!body.name) return c.json({ error: "name is required" }, 400);
   if (!body.service) return c.json({ error: "service is required" }, 400);
 
   const validService = MCP_SERVICES.find((s) => s.id === body.service);
   if (!validService) return c.json({ error: "unknown service" }, 400);
+
+  // Validate credentials against schema if the service requires them
+  if (validService.credentialsSchema) {
+    const creds = body.credentials || {};
+    for (const field of validService.credentialsSchema) {
+      if (field.required && !creds[field.key]?.trim()) {
+        return c.json({ error: `${field.label} is required` }, 400);
+      }
+    }
+  }
 
   const key = `mcp_${randomHex(32)}`;
   const meta: McpKeyMeta = {
@@ -69,6 +106,20 @@ app.post("/api/mcp-keys", async (c) => {
     created_at: new Date().toISOString(),
     created_by: getUserEmail(c.req.raw),
   };
+
+  // Store credentials if provided and service has a schema
+  if (validService.credentialsSchema && body.credentials) {
+    // Only store fields defined in the schema
+    const sanitized: Record<string, string> = {};
+    for (const field of validService.credentialsSchema) {
+      if (body.credentials[field.key]) {
+        sanitized[field.key] = body.credentials[field.key];
+      }
+    }
+    if (Object.keys(sanitized).length > 0) {
+      meta.credentials = sanitized;
+    }
+  }
 
   await c.env.MCP_KEYS.put(key, JSON.stringify(meta));
 

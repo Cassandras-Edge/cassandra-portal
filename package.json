@@ -5,7 +5,8 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "cassandra-observability": "github:DigiBugCat/cassandra-observability",
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260227.0",
     "typescript": "5.9.3",
+    "vitest": "^4.0.18",
     "wrangler": "^4.67.0"
   }
 }

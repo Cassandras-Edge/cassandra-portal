@@ -209,6 +209,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg-0);color:var(--text-0);mi
     <h3 id="modal-create-title">New Key</h3>
     <p class="desc" id="modal-create-desc">Create a new key.</p>
     <div class="field"><label>Name</label><input id="key-name" placeholder="e.g. andrew-laptop, ci-pipeline"></div>
+    <div id="credentials-fields"></div>
     <div class="modal-footer"><button class="btn btn-outline" onclick="hideModal()">Cancel</button><button class="btn btn-accent" id="create-btn" onclick="createKey()">Create</button></div>
   </div>
   <div class="modal" id="modal-result" style="display:none">
@@ -343,6 +344,7 @@ function showCreateModal(mode){
   document.getElementById('modal-create').style.display='block';
   document.getElementById('modal-result').style.display='none';
   document.getElementById('key-name').value='';
+  document.getElementById('credentials-fields').innerHTML='';
   if(mode==='runner'){
     document.getElementById('modal-create-title').textContent='New Runner Key';
     document.getElementById('modal-create-desc').textContent='Create a new tenant with an API key for runner access.';
@@ -352,6 +354,15 @@ function showCreateModal(mode){
     document.getElementById('modal-create-title').textContent='New '+svcName+' Key';
     document.getElementById('modal-create-desc').textContent='Create an API key scoped to '+svcName+'.';
     document.getElementById('key-name').placeholder='e.g. obsidian-client, partner-acme';
+    // Render credential fields if service has a credentials schema
+    var svc=mcpServices.find(function(s){return s.id===selectedService});
+    if(svc&&svc.credentialsSchema&&svc.credentialsSchema.length>0){
+      var html='<div style="margin-bottom:4px;font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-top:8px">Service Credentials</div>';
+      svc.credentialsSchema.forEach(function(f){
+        html+='<div class="field"><label>'+esc(f.label)+(f.required?' *':'')+'</label><input type="password" id="cred-'+f.key+'" placeholder="'+esc(f.label)+'" autocomplete="off"></div>';
+      });
+      document.getElementById('credentials-fields').innerHTML=html;
+    }
   }
   document.getElementById('key-name').focus();
 }
@@ -365,7 +376,26 @@ function createKey(){
   var btn=document.getElementById('create-btn');
   btn.innerHTML='<span class="spinner"></span> Creating...';btn.disabled=true;
   var url=createMode==='runner'?'/api/tokens':'/api/mcp-keys';
-  var body=createMode==='runner'?{name:name}:{name:name,service:selectedService};
+  var body;
+  if(createMode==='runner'){
+    body={name:name};
+  }else{
+    body={name:name,service:selectedService};
+    // Collect credentials if service has a schema
+    var svc=mcpServices.find(function(s){return s.id===selectedService});
+    if(svc&&svc.credentialsSchema&&svc.credentialsSchema.length>0){
+      var creds={};
+      var missing=[];
+      svc.credentialsSchema.forEach(function(f){
+        var el=document.getElementById('cred-'+f.key);
+        var val=el?el.value.trim():'';
+        if(val)creds[f.key]=val;
+        else if(f.required)missing.push(f.label);
+      });
+      if(missing.length>0){btn.innerHTML='Create';btn.disabled=false;alert('Missing required fields: '+missing.join(', '));return}
+      if(Object.keys(creds).length>0)body.credentials=creds;
+    }
+  }
   fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(data){
     if(data.error)throw new Error(data.error);
     document.getElementById('new-api-key').textContent=data.api_key||data.key;
