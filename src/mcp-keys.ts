@@ -1,21 +1,24 @@
 import { Hono } from "hono";
 import { pushMetrics, counter } from "cassandra-observability";
+import { getUserEmail } from "./auth";
+import { randomHex } from "./db";
 
 interface McpKeyMeta {
   name: string;
   service: string;
   created_at: string;
   created_by: string;
+  project_id?: string;
   credentials?: Record<string, string>;
 }
 
-interface CredentialField {
+export interface CredentialField {
   key: string;
   label: string;
   required: boolean;
 }
 
-interface McpService {
+export interface McpService {
   id: string;
   name: string;
   description: string;
@@ -24,7 +27,7 @@ interface McpService {
 }
 
 // Registry of available MCP services (add new services here)
-const MCP_SERVICES: McpService[] = [
+export const MCP_SERVICES: McpService[] = [
   {
     id: "yt-mcp",
     name: "yt-mcp",
@@ -45,12 +48,14 @@ const MCP_SERVICES: McpService[] = [
 
 const app = new Hono<{ Bindings: Env }>();
 
-// List available MCP services
+// ── Service registry ──
+
 app.get("/api/mcp-services", (c) => {
   return c.json(MCP_SERVICES);
 });
 
-// List keys, optionally filtered by service
+// ── Legacy key routes (backward compat) ──
+
 app.get("/api/mcp-keys", async (c) => {
   const userEmail = getUserEmail(c.req.raw);
   if (!userEmail) return c.json({ error: "authenticated user email is required" }, 401);
@@ -118,7 +123,6 @@ app.post("/api/mcp-keys", async (c) => {
 
   // Store credentials if provided and service has a schema
   if (validService.credentialsSchema && body.credentials) {
-    // Only store fields defined in the schema
     const sanitized: Record<string, string> = {};
     for (const field of validService.credentialsSchema) {
       if (body.credentials[field.key]) {
@@ -160,7 +164,15 @@ app.delete("/api/mcp-keys/:key", async (c) => {
   if (meta.created_by !== userEmail) {
     return c.json({ error: "forbidden" }, 403);
   }
+
   await c.env.MCP_KEYS.delete(key);
+
+  // Also clean up D1 if the key was tracked there
+  try {
+    await c.env.PORTAL_DB.prepare("DELETE FROM mcp_keys WHERE key_id = ?").bind(key).run();
+  } catch {
+    // D1 might not have this key (legacy key)
+  }
 
   c.executionCtx.waitUntil(
     pushMetrics(c.env, [
@@ -170,59 +182,5 @@ app.delete("/api/mcp-keys/:key", async (c) => {
 
   return c.json({ ok: true });
 });
-
-function randomHex(bytes: number): string {
-  const buf = new Uint8Array(bytes);
-  crypto.getRandomValues(buf);
-  return Array.from(buf)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function getUserEmail(request: Request): string {
-  const headerEmail =
-    request.headers.get("Cf-Access-Authenticated-User-Email")?.trim() ||
-    request.headers.get("X-Auth-Request-Email")?.trim();
-  if (headerEmail) return headerEmail;
-
-  try {
-    const jwt = request.headers.get("Cf-Access-Jwt-Assertion") || getCookie(request, "CF_Authorization");
-    if (jwt) {
-      const payload = parseJwtPayload(jwt);
-      if (typeof payload.email === "string" && payload.email.trim()) {
-        return payload.email.trim();
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return "";
-}
-
-function getCookie(request: Request, name: string): string | null {
-  const cookies = request.headers.get("Cookie");
-  if (!cookies) return null;
-
-  for (const chunk of cookies.split(";")) {
-    const trimmed = chunk.trim();
-    if (!trimmed.startsWith(`${name}=`)) continue;
-    return trimmed.slice(name.length + 1);
-  }
-
-  return null;
-}
-
-function parseJwtPayload(jwt: string): Record<string, unknown> {
-  const parts = jwt.split(".");
-  if (parts.length < 2) throw new Error("invalid jwt");
-  return JSON.parse(decodeBase64Url(parts[1])) as Record<string, unknown>;
-}
-
-function decodeBase64Url(value: string): string {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = normalized.length % 4;
-  const padded = padding === 0 ? normalized : normalized + "=".repeat(4 - padding);
-  return atob(padded);
-}
 
 export { app as mcpKeys };

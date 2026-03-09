@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  /* Background scale — dark to light */
+  --color-surface-0: oklch(0.13 0.02 280);
+  --color-surface-1: oklch(0.16 0.02 280);
+  --color-surface-2: oklch(0.19 0.02 280);
+  --color-surface-3: oklch(0.23 0.02 280);
+  --color-surface-4: oklch(0.27 0.02 280);
+
+  /* Border */
+  --color-edge: oklch(0.30 0.02 280);
+  --color-edge-active: oklch(0.40 0.03 280);
+
+  /* Text scale */
+  --color-text-0: oklch(0.95 0.01 280);
+  --color-text-1: oklch(0.82 0.02 280);
+  --color-text-2: oklch(0.60 0.02 280);
+  --color-text-3: oklch(0.45 0.02 280);
+
+  /* Accent */
+  --color-accent: oklch(0.68 0.19 280);
+  --color-accent-soft: oklch(0.68 0.19 280 / 0.1);
+  --color-accent-hover: oklch(0.74 0.17 280);
+
+  /* Semantic */
+  --color-ok: oklch(0.72 0.19 155);
+  --color-ok-soft: oklch(0.72 0.19 155 / 0.1);
+  --color-danger: oklch(0.68 0.19 15);
+  --color-danger-soft: oklch(0.68 0.19 15 / 0.1);
+  --color-warn: oklch(0.80 0.16 85);
+  --color-warn-soft: oklch(0.80 0.16 85 / 0.08);
+
+  /* Typography */
+  --font-sans: "Sora", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+/* Base resets */
+@layer base {
+  body {
+    background: var(--color-surface-0);
+    color: var(--color-text-0);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}

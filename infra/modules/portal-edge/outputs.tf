@@ -3,6 +3,11 @@ output "mcp_keys_kv_namespace_id" {
   value       = cloudflare_workers_kv_namespace.mcp_keys.id
 }
 
+output "portal_db_id" {
+  description = "D1 database ID for PORTAL_DB — bind in portal wrangler.jsonc"
+  value       = cloudflare_d1_database.portal_db.id
+}
+
 output "portal_hostname" {
   description = "Portal hostname"
   value       = "${var.subdomain}.${var.domain}"

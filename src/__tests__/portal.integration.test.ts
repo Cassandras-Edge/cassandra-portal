@@ -37,13 +37,10 @@ describe("portal worker integration", () => {
     return { env, executionCtx, response };
   }
 
-  it("serves the HTML shell for non-API routes and records root metrics labels", async () => {
+  it("serves a fallback for non-API routes and records root metrics labels", async () => {
     const { executionCtx, response } = await request("/dashboard");
-    const html = await response.text();
 
     expect(response.status).toBe(200);
-    expect(html).toContain("Cassandra Portal");
-    expect(html).toContain("example.com");
     expect(counter).toHaveBeenNthCalledWith(1, "mcp_requests_total", 1, {
       service: "portal",
       status: "200",

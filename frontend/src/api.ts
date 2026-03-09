@@ -1,0 +1,182 @@
+// Thin fetch wrappers for portal API
+
+// ── Config (cached) ──
+let _domain: string | null = null;
+export async function getDomain(): Promise<string> {
+  if (_domain !== null) return _domain;
+  const res = await fetch("/api/config");
+  const data = await res.json() as { domain: string };
+  _domain = data.domain;
+  return _domain;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    throw new Error(body.error || `${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// ── Projects ──
+
+export interface Project {
+  id: string;
+  name: string;
+  kind: "personal" | "shared";
+  owner_email: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Member {
+  project_id: string;
+  email: string;
+  role: "owner" | "member";
+  created_at: string;
+}
+
+export const projects = {
+  list: () => request<Project[]>("/api/projects"),
+  create: (name: string, kind = "shared") =>
+    request<Project>("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, kind }),
+    }),
+  update: (id: string, name: string) =>
+    request("/api/projects/" + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  delete: (id: string) =>
+    request("/api/projects/" + id, { method: "DELETE" }),
+};
+
+export const members = {
+  list: (projectId: string) =>
+    request<Member[]>(`/api/projects/${projectId}/members`),
+  add: (projectId: string, email: string, role = "member") =>
+    request(`/api/projects/${projectId}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role }),
+    }),
+  updateRole: (projectId: string, email: string, role: string) =>
+    request(`/api/projects/${projectId}/members/${email}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    }),
+  remove: (projectId: string, email: string) =>
+    request(`/api/projects/${projectId}/members/${email}`, { method: "DELETE" }),
+};
+
+// ── Services ──
+
+export interface McpService {
+  id: string;
+  name: string;
+  description: string;
+  status: "active" | "planned";
+  credentialsSchema?: { key: string; label: string; required: boolean }[];
+}
+
+export const services = {
+  list: () => request<McpService[]>("/api/mcp-services"),
+};
+
+// ── Credentials ──
+
+export interface CredentialMeta {
+  has_credentials: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export const credentials = {
+  get: (projectId: string, serviceId: string) =>
+    request<CredentialMeta>(`/api/projects/${projectId}/services/${serviceId}/credentials`),
+  set: (projectId: string, serviceId: string, creds: Record<string, string>) =>
+    request(`/api/projects/${projectId}/services/${serviceId}/credentials`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(creds),
+    }),
+  remove: (projectId: string, serviceId: string) =>
+    request(`/api/projects/${projectId}/services/${serviceId}/credentials`, { method: "DELETE" }),
+};
+
+// ── Keys ──
+
+export interface McpKey {
+  key_id: string;
+  project_id: string;
+  service_id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface CreatedKey {
+  key: string;
+  name: string;
+  service: string;
+  project_id: string;
+  created_at: string;
+}
+
+export const keys = {
+  list: (projectId: string, serviceId: string) =>
+    request<McpKey[]>(`/api/projects/${projectId}/services/${serviceId}/keys`),
+  create: (projectId: string, serviceId: string, name: string) =>
+    request<CreatedKey>(`/api/projects/${projectId}/services/${serviceId}/keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  delete: (projectId: string, serviceId: string, keyId: string) =>
+    request(`/api/projects/${projectId}/services/${serviceId}/keys/${keyId}`, { method: "DELETE" }),
+};
+
+// ── Runner tokens (legacy, separate from workbench) ──
+
+export interface RunnerToken {
+  id: string;
+  name: string;
+  namespace: string;
+  max_sessions: number;
+  created_at: string;
+  api_key?: string;
+}
+
+export const runnerTokens = {
+  list: () => request<RunnerToken[]>("/api/tokens"),
+  create: (name: string) =>
+    request<RunnerToken>("/api/tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+  delete: (id: string) => request("/api/tokens/" + id, { method: "DELETE" }),
+};
+
+// ── User info from CF Access JWT cookie ──
+
+export function getUserEmailFromCookie(): string {
+  try {
+    const jwt = document.cookie
+      .split(";")
+      .map((c) => c.trim())
+      .find((c) => c.startsWith("CF_Authorization="));
+    if (jwt) {
+      const payload = JSON.parse(atob(jwt.split("=")[1].split(".")[1]));
+      return payload.email || "unknown";
+    }
+  } catch {
+    // ignore
+  }
+  return "authenticated";
+}

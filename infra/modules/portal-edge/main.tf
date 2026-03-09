@@ -13,6 +13,12 @@ resource "cloudflare_workers_kv_namespace" "mcp_keys" {
   title      = "cassandra-mcp-keys"
 }
 
+# D1 database — projects, members, service credentials, key metadata
+resource "cloudflare_d1_database" "portal_db" {
+  account_id = var.account_id
+  name       = "cassandra-portal"
+}
+
 # DNS record for the portal worker (deployed by wrangler, not Terraform)
 resource "cloudflare_record" "portal" {
   zone_id = var.zone_id

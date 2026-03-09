@@ -29,21 +29,52 @@ export function createMockKV(): KVNamespace & { _store: Map<string, string> } {
   return kv as unknown as KVNamespace & { _store: Map<string, string> };
 }
 
+export function createMockD1(): D1Database & { _tables: Map<string, any[]> } {
+  const tables = new Map<string, any[]>();
+
+  const db = {
+    _tables: tables,
+    prepare: vi.fn((query: string) => {
+      return {
+        bind: vi.fn(function (this: any, ...params: any[]) {
+          (this as any)._params = params;
+          return this;
+        }),
+        first: vi.fn(async () => null),
+        all: vi.fn(async () => ({ results: [], success: true })),
+        run: vi.fn(async () => ({ success: true, meta: {} })),
+        raw: vi.fn(async () => []),
+      };
+    }),
+    dump: vi.fn(),
+    batch: vi.fn(async (stmts: any[]) => stmts.map(() => ({ results: [], success: true }))),
+    exec: vi.fn(async () => ({ count: 0, duration: 0 })),
+  };
+
+  return db as unknown as D1Database & { _tables: Map<string, any[]> };
+}
+
 export function createMockEnv(overrides: Partial<Env> = {}): Env & {
   MCP_KEYS: KVNamespace & { _store: Map<string, string> };
+  PORTAL_DB: D1Database & { _tables: Map<string, any[]> };
 } {
   const env = {
     RUNNER_URL: "https://runner.example.test",
     RUNNER_ADMIN_KEY: "runner-admin-key",
     DOMAIN: "example.com",
     MCP_KEYS: createMockKV(),
+    PORTAL_DB: createMockD1(),
+    CREDENTIALS_KEY: "test-credentials-key-32-bytes!!",
     VM_PUSH_URL: "https://metrics.example.test",
     VM_PUSH_CLIENT_ID: "metrics-client-id",
     VM_PUSH_CLIENT_SECRET: "metrics-client-secret",
     ...overrides,
   };
 
-  return env as Env & { MCP_KEYS: KVNamespace & { _store: Map<string, string> } };
+  return env as Env & {
+    MCP_KEYS: KVNamespace & { _store: Map<string, string> };
+    PORTAL_DB: D1Database & { _tables: Map<string, any[]> };
+  };
 }
 
 export function createExecutionCtx(): ExecutionContext & {
