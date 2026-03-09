@@ -315,10 +315,13 @@ function renderSvcDetail(id){
   document.getElementById('svc-detail-status').className='pill '+(svc.status==='active'?'active':'');
   document.getElementById('svc-detail-url').textContent=svc.status==='active'?svc.id+'.'+DOMAIN+'/mcp':'';
   document.getElementById('svc-new-key-btn').style.display=svc.status==='active'?'inline-flex':'none';
+  var selfServiceNote=svc.credentialsSchema&&svc.credentialsSchema.length
+    ?'<div class="warn-banner" style="margin:0 0 12px">Credentials for this service are self-managed and scoped to your signed-in account.</div>'
+    :'';
   var rows=keys.map(function(k){return '<tr><td style="font-weight:500">'+esc(k.name)+'</td><td><code class="mono">'+esc(maskKey(k.key))+'</code></td><td style="color:var(--text-3)">'+esc(k.created_by)+'</td><td style="color:var(--text-3)">'+fmtDate(k.created_at)+'</td><td style="text-align:right"><button class="btn-red-sm" onclick="deleteMcpKey(\\''+esc(k.key)+'\\',\\''+esc(k.name)+'\\')">Delete</button></td></tr>'});
   document.getElementById('svc-detail-body').innerHTML=keys.length
-    ?'<table class="full-table"><thead><tr><th>Name</th><th>Key</th><th>Created By</th><th>Created</th><th></th></tr></thead><tbody>'+rows.join('')+'</tbody></table>'
-    :'<div class="empty-state" style="padding:60px 20px">No keys for '+esc(svc.name)+' yet. Create one to get started.</div>';
+    ?selfServiceNote+'<table class="full-table"><thead><tr><th>Name</th><th>Key</th><th>Created By</th><th>Created</th><th></th></tr></thead><tbody>'+rows.join('')+'</tbody></table>'
+    :selfServiceNote+'<div class="empty-state" style="padding:60px 20px">No keys for '+esc(svc.name)+' yet. Create one to get started.</div>';
 }
 
 // ── Helpers ──

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { createAccessCookie, createExecutionCtx, createMockEnv } from "./test-helpers.js";
 
 // Mock cassandra-observability before importing the module
 vi.mock("cassandra-observability", () => ({
@@ -8,46 +9,13 @@ vi.mock("cassandra-observability", () => ({
 
 const { mcpKeys } = await import("../mcp-keys.js");
 
-// Mock KV store
-function createMockKV(): KVNamespace & { _store: Map<string, string> } {
-  const store = new Map<string, string>();
-  return {
-    _store: store,
-    get: vi.fn(async (key: string, opts?: any) => {
-      const val = store.get(key);
-      if (!val) return null;
-      if (opts === "json" || opts?.type === "json") return JSON.parse(val);
-      return val;
-    }),
-    put: vi.fn(async (key: string, value: string) => {
-      store.set(key, value);
-    }),
-    delete: vi.fn(async (key: string) => {
-      store.delete(key);
-    }),
-    list: vi.fn(async () => ({
-      keys: Array.from(store.keys()).map((k) => ({ name: k })),
-      list_complete: true,
-      cacheStatus: null,
-    })),
-    getWithMetadata: vi.fn(),
-  } as unknown as KVNamespace & { _store: Map<string, string> };
-}
-
-function createMockEnv() {
-  return {
-    MCP_KEYS: createMockKV(),
-    VM_PUSH_URL: "",
-    VM_PUSH_CLIENT_ID: "",
-    VM_PUSH_CLIENT_SECRET: "",
-  };
-}
-
-function createApp(env: ReturnType<typeof createMockEnv>) {
+function createApp(env: ReturnType<typeof createMockEnv>, email = "user@test.com") {
   return {
     async request(path: string, init?: RequestInit) {
-      const req = new Request(`http://localhost${path}`, init);
-      return mcpKeys.fetch(req, env, { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as any);
+      const headers = new Headers(init?.headers);
+      if (!headers.has("Cookie")) headers.set("Cookie", createAccessCookie(email));
+      const req = new Request(`http://localhost${path}`, { ...init, headers });
+      return mcpKeys.fetch(req, env, createExecutionCtx());
     },
   };
 }
@@ -91,6 +59,8 @@ describe("POST /api/mcp-keys", () => {
     expect(data.key).toMatch(/^mcp_/);
     expect(data.name).toBe("test-key");
     expect(data.service).toBe("yt-mcp");
+    const stored = JSON.parse(env.MCP_KEYS._store.get(data.key)!);
+    expect(stored.created_by).toBe("user@test.com");
   });
 
   it("creates a key with credentials for pushover", async () => {
@@ -238,6 +208,21 @@ describe("POST /api/mcp-keys", () => {
 
     expect(res.status).toBe(400);
   });
+
+  it("rejects blank names after trimming", async () => {
+    const env = createMockEnv();
+    const app = createApp(env);
+
+    const res = await app.request("/api/mcp-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "   ", service: "yt-mcp" }),
+    });
+
+    const data = await res.json() as any;
+    expect(res.status).toBe(400);
+    expect(data.error).toBe("name is required");
+  });
 });
 
 describe("GET /api/mcp-keys", () => {
@@ -250,7 +235,7 @@ describe("GET /api/mcp-keys", () => {
       name: "test-key",
       service: "pushover",
       created_at: "2026-01-01",
-      created_by: "user@example.com",
+      created_by: "user@test.com",
       credentials: {
         pushover_user_key: "u_secret",
         pushover_api_token: "a_secret",
@@ -277,7 +262,7 @@ describe("GET /api/mcp-keys", () => {
       name: "basic-key",
       service: "yt-mcp",
       created_at: "2026-01-01",
-      created_by: "user@example.com",
+      created_by: "user@test.com",
     }));
 
     const res = await app.request("/api/mcp-keys");
@@ -302,6 +287,42 @@ describe("GET /api/mcp-keys", () => {
 
     expect(data).toHaveLength(1);
     expect(data[0].service).toBe("pushover");
+  });
+
+  it("only returns keys owned by the signed-in user", async () => {
+    const env = createMockEnv();
+    const app = createApp(env, "alice@example.com");
+
+    env.MCP_KEYS._store.set("mcp_alice", JSON.stringify({
+      name: "alice-key",
+      service: "pushover",
+      created_at: "2026-01-01",
+      created_by: "alice@example.com",
+    }));
+    env.MCP_KEYS._store.set("mcp_bob", JSON.stringify({
+      name: "bob-key",
+      service: "pushover",
+      created_at: "2026-01-01",
+      created_by: "bob@example.com",
+    }));
+
+    const res = await app.request("/api/mcp-keys");
+    const data = await res.json() as any[];
+
+    expect(res.status).toBe(200);
+    expect(data).toHaveLength(1);
+    expect(data[0].name).toBe("alice-key");
+  });
+
+  it("rejects list requests without an authenticated user", async () => {
+    const env = createMockEnv();
+    const app = createApp(env);
+
+    const res = await app.request("/api/mcp-keys", {
+      headers: { Cookie: "" },
+    });
+
+    expect(res.status).toBe(401);
   });
 });
 
@@ -335,5 +356,40 @@ describe("DELETE /api/mcp-keys/:key", () => {
 
     const res = await app.request("/api/mcp-keys/mcp_nonexistent", { method: "DELETE" });
     expect(res.status).toBe(404);
+  });
+
+  it("rejects deleting another user's key", async () => {
+    const env = createMockEnv();
+    const app = createApp(env, "alice@example.com");
+
+    env.MCP_KEYS._store.set("mcp_todelete", JSON.stringify({
+      name: "delete-me",
+      service: "yt-mcp",
+      created_at: "2026-01-01",
+      created_by: "bob@example.com",
+    }));
+
+    const res = await app.request("/api/mcp-keys/mcp_todelete", { method: "DELETE" });
+    const data = await res.json() as any;
+
+    expect(res.status).toBe(403);
+    expect(data.error).toBe("forbidden");
+    expect(env.MCP_KEYS._store.has("mcp_todelete")).toBe(true);
+  });
+
+  it("rejects create requests without an authenticated user", async () => {
+    const env = createMockEnv();
+    const app = createApp(env);
+
+    const res = await app.request("/api/mcp-keys", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "",
+      },
+      body: JSON.stringify({ name: "test-key", service: "yt-mcp" }),
+    });
+
+    expect(res.status).toBe(401);
   });
 });

@@ -4,6 +4,8 @@
 
 CF Worker that serves the Cassandra dashboard UI. Manages runner tenant API keys (proxied to orchestrator) and MCP API keys (direct KV CRUD). Protected by CF Access (Google OAuth).
 
+MCP key management is intended to be self-service and user-scoped. Service credentials stored alongside MCP keys, such as future Pushover settings, should be manageable only by the signed-in user who created them.
+
 ## Repo Structure
 
 ```

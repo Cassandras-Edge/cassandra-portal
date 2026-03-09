@@ -52,6 +52,9 @@ app.get("/api/mcp-services", (c) => {
 
 // List keys, optionally filtered by service
 app.get("/api/mcp-keys", async (c) => {
+  const userEmail = getUserEmail(c.req.raw);
+  if (!userEmail) return c.json({ error: "authenticated user email is required" }, 401);
+
   const service = c.req.query("service");
   const list = await c.env.MCP_KEYS.list();
   const keys: Array<{
@@ -66,6 +69,7 @@ app.get("/api/mcp-keys", async (c) => {
   for (const item of list.keys) {
     const meta = await c.env.MCP_KEYS.get<McpKeyMeta>(item.name, "json");
     if (meta) {
+      if (meta.created_by !== userEmail) continue;
       if (service && meta.service !== service) continue;
       keys.push({
         key: item.name,
@@ -82,11 +86,16 @@ app.get("/api/mcp-keys", async (c) => {
 });
 
 app.post("/api/mcp-keys", async (c) => {
-  const body = await c.req.json<{ name?: string; service?: string; credentials?: Record<string, string> }>();
-  if (!body.name) return c.json({ error: "name is required" }, 400);
-  if (!body.service) return c.json({ error: "service is required" }, 400);
+  const userEmail = getUserEmail(c.req.raw);
+  if (!userEmail) return c.json({ error: "authenticated user email is required" }, 401);
 
-  const validService = MCP_SERVICES.find((s) => s.id === body.service);
+  const body = await c.req.json<{ name?: string; service?: string; credentials?: Record<string, string> }>();
+  const name = body.name?.trim();
+  const service = body.service?.trim();
+  if (!name) return c.json({ error: "name is required" }, 400);
+  if (!service) return c.json({ error: "service is required" }, 400);
+
+  const validService = MCP_SERVICES.find((s) => s.id === service);
   if (!validService) return c.json({ error: "unknown service" }, 400);
 
   // Validate credentials against schema if the service requires them
@@ -101,10 +110,10 @@ app.post("/api/mcp-keys", async (c) => {
 
   const key = `mcp_${randomHex(32)}`;
   const meta: McpKeyMeta = {
-    name: body.name,
-    service: body.service,
+    name,
+    service,
     created_at: new Date().toISOString(),
-    created_by: getUserEmail(c.req.raw),
+    created_by: userEmail,
   };
 
   // Store credentials if provided and service has a schema
@@ -138,6 +147,9 @@ app.post("/api/mcp-keys", async (c) => {
 });
 
 app.delete("/api/mcp-keys/:key", async (c) => {
+  const userEmail = getUserEmail(c.req.raw);
+  if (!userEmail) return c.json({ error: "authenticated user email is required" }, 401);
+
   const key = c.req.param("key");
   if (!key.startsWith("mcp_")) return c.json({ error: "invalid key" }, 400);
 
@@ -145,6 +157,9 @@ app.delete("/api/mcp-keys/:key", async (c) => {
   if (!existing) return c.json({ error: "key not found" }, 404);
 
   const meta = JSON.parse(existing) as McpKeyMeta;
+  if (meta.created_by !== userEmail) {
+    return c.json({ error: "forbidden" }, 403);
+  }
   await c.env.MCP_KEYS.delete(key);
 
   c.executionCtx.waitUntil(
@@ -165,20 +180,49 @@ function randomHex(bytes: number): string {
 }
 
 function getUserEmail(request: Request): string {
+  const headerEmail =
+    request.headers.get("Cf-Access-Authenticated-User-Email")?.trim() ||
+    request.headers.get("X-Auth-Request-Email")?.trim();
+  if (headerEmail) return headerEmail;
+
   try {
-    const cookie = request.headers
-      .get("Cookie")
-      ?.split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith("CF_Authorization="));
-    if (cookie) {
-      const payload = JSON.parse(atob(cookie.split("=")[1].split(".")[1]));
-      return payload.email || "unknown";
+    const jwt = request.headers.get("Cf-Access-Jwt-Assertion") || getCookie(request, "CF_Authorization");
+    if (jwt) {
+      const payload = parseJwtPayload(jwt);
+      if (typeof payload.email === "string" && payload.email.trim()) {
+        return payload.email.trim();
+      }
     }
   } catch {
     // ignore
   }
-  return "unknown";
+  return "";
+}
+
+function getCookie(request: Request, name: string): string | null {
+  const cookies = request.headers.get("Cookie");
+  if (!cookies) return null;
+
+  for (const chunk of cookies.split(";")) {
+    const trimmed = chunk.trim();
+    if (!trimmed.startsWith(`${name}=`)) continue;
+    return trimmed.slice(name.length + 1);
+  }
+
+  return null;
+}
+
+function parseJwtPayload(jwt: string): Record<string, unknown> {
+  const parts = jwt.split(".");
+  if (parts.length < 2) throw new Error("invalid jwt");
+  return JSON.parse(decodeBase64Url(parts[1])) as Record<string, unknown>;
+}
+
+function decodeBase64Url(value: string): string {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  const padded = padding === 0 ? normalized : normalized + "=".repeat(4 - padding);
+  return atob(padded);
 }
 
 export { app as mcpKeys };

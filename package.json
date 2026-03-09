@@ -6,7 +6,10 @@
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "type-check": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run src/__tests__/mcp-keys.test.ts src/__tests__/runner-proxy.test.ts",
+    "test:integration": "vitest run src/__tests__/portal.integration.test.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "cassandra-observability": "github:DigiBugCat/cassandra-observability",
@@ -14,6 +17,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260227.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "5.9.3",
     "vitest": "^4.0.18",
     "wrangler": "^4.67.0"
