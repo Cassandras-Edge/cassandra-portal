@@ -7,13 +7,13 @@
   "kv_namespaces": [
     {
       "binding": "MCP_KEYS",
-      "id": "REPLACE_WITH_TERRAFORM_OUTPUT"
+      "id": "<your-mcp-keys-kv-namespace-id>"
     }
   ],
   "routes": [
     {
-      "pattern": "portal.REDACTED_DOMAIN/*",
-      "zone_name": "REDACTED_DOMAIN"
+      "pattern": "<subdomain>.<domain>/*",
+      "zone_name": "<domain>"
     }
   ],
   "observability": {
