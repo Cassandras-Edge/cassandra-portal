@@ -168,6 +168,10 @@ body{font-family:'Sora',sans-serif;background:var(--bg-0);color:var(--text-0);mi
     <div class="warn-banner">&#x26A0; Copy now — the key won't be shown again.</div>
     <div class="cred-box"><span class="key">API Key</span><span id="new-api-key"></span><button class="copy-btn" onclick="copyText('new-api-key',this)" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div>
     <div id="result-tenant-row" class="cred-box"><span class="key">Tenant ID</span><span id="new-tenant-id"></span></div>
+    <div id="result-cli-row" style="display:none">
+      <div style="font-size:10.5px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px">Claude CLI</div>
+      <div class="cred-box"><span id="cli-command"></span><button class="copy-btn" onclick="copyText('cli-command',this)" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div>
+    </div>
     <div class="modal-footer"><button class="btn btn-accent" onclick="hideModal(); loadAll();">Done</button></div>
   </div>
 </div>
@@ -275,8 +279,11 @@ function createKey(){
     if(createMode==='runner'){
       document.getElementById('result-tenant-row').style.display='block';
       document.getElementById('new-tenant-id').textContent=data.id;
+      document.getElementById('result-cli-row').style.display='none';
     }else{
       document.getElementById('result-tenant-row').style.display='none';
+      document.getElementById('result-cli-row').style.display='block';
+      document.getElementById('cli-command').textContent='claude mcp add --transport http -H "Authorization: Bearer '+data.key+'" yt-mcp https://yt-mcp.'+DOMAIN+'/mcp';
     }
     document.getElementById('modal-create').style.display='none';
     document.getElementById('modal-result').style.display='block';
