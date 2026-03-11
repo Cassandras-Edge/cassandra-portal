@@ -42,7 +42,7 @@ cassandra-portal/
 
 ## Deploy
 
-Worker auto-deploys on push to main via GitHub Actions (`deploy.yml`). Frontend is built with Vite, then served via Workers Static Assets. D1 migrations run before deploy.
+Worker auto-deploys on push to main via Woodpecker CI (`.woodpecker.yaml`). Frontend is built with Vite, then served via Workers Static Assets. D1 migrations run before deploy.
 
 ### Infra (one-time, from cassandra-infra)
 
@@ -56,7 +56,7 @@ tofu apply
 # Outputs: mcp_keys_kv_namespace_id, portal_db_id
 ```
 
-After `tofu apply`, set the new D1 database ID as a GitHub Actions secret (`D1_DATABASE_ID`) on the repo.
+After `tofu apply`, set the new D1 database ID as a Woodpecker secret (`portal_d1_database_id`) on the repo.
 
 ### Wrangler secrets (one-time, then on rotation)
 
