@@ -1,5 +1,5 @@
 import * as api from "../api";
-import { h, btn, input, field, pill, mono, emptyState, fmtDate, maskKey, copyToClipboard } from "../components/ui";
+import { h, btn, input, textarea, field, pill, mono, emptyState, fmtDate, maskKey, copyToClipboard } from "../components/ui";
 import { showModal, hideModal, modalCard } from "../components/modal";
 
 let currentProject: api.Project | null = null;
@@ -412,12 +412,14 @@ async function showKeyCreatedModal(container: HTMLElement, created: api.CreatedK
 
 function showCredentialFormModal(container: HTMLElement, project: api.Project, service: api.McpService) {
   const body = h("div", {});
-  const inputs: { key: string; input: HTMLInputElement }[] = [];
+  const inputs: { key: string; input: HTMLInputElement | HTMLTextAreaElement }[] = [];
 
   for (const f of service.credentialsSchema || []) {
-    const inp = input({ placeholder: f.label, type: "password" });
+    const inp = f.type === "textarea"
+      ? textarea({ placeholder: f.label, rows: 4 })
+      : input({ placeholder: f.label, type: "password" });
     inputs.push({ key: f.key, input: inp });
-    body.appendChild(field(f.label + (f.required ? " *" : ""), inp));
+    body.appendChild(field(f.label + (f.required ? " *" : ""), inp, f.hint));
   }
 
   const footer = h("div", { className: "flex justify-end gap-2 mt-1" });

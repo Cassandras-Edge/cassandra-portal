@@ -81,7 +81,7 @@ export interface McpService {
   name: string;
   description: string;
   status: "active" | "planned";
-  credentialsSchema?: { key: string; label: string; required: boolean }[];
+  credentialsSchema?: { key: string; label: string; required: boolean; type?: "text" | "textarea"; hint?: string }[];
 }
 
 export const services = {

@@ -16,6 +16,8 @@ export interface CredentialField {
   key: string;
   label: string;
   required: boolean;
+  type?: "text" | "textarea";
+  hint?: string;
 }
 
 export interface McpService {
@@ -33,6 +35,15 @@ export const MCP_SERVICES: McpService[] = [
     name: "yt-mcp",
     description: "Video & Audio Transcription",
     status: "active",
+    credentialsSchema: [
+      {
+        key: "youtube_cookies",
+        label: "YouTube Cookies (base64)",
+        required: false,
+        type: "textarea",
+        hint: "Run: yt-dlp --cookies-from-browser firefox --cookies - | base64\n(use chrome instead of firefox on Windows)",
+      },
+    ],
   },
   {
     id: "pushover",

@@ -42,13 +42,27 @@ export function input(opts: { placeholder?: string; type?: string; id?: string }
   return el;
 }
 
-export function field(label: string, inputEl: HTMLElement): HTMLElement {
+export function textarea(opts: { placeholder?: string; rows?: number } = {}): HTMLTextAreaElement {
+  const el = document.createElement("textarea");
+  el.className =
+    "w-full px-3 py-2 bg-surface-3 border border-edge rounded-md text-[12.5px] text-text-0 outline-hidden focus:border-accent font-mono resize-y";
+  el.rows = opts.rows || 4;
+  if (opts.placeholder) el.placeholder = opts.placeholder;
+  return el;
+}
+
+export function field(label: string, inputEl: HTMLElement, hint?: string): HTMLElement {
   const div = h("div", { className: "mb-4" });
   const lbl = h("label", {
     className: "block text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5",
   }, label);
   div.appendChild(lbl);
   div.appendChild(inputEl);
+  if (hint) {
+    div.appendChild(h("p", {
+      className: "mt-1.5 text-[11px] text-text-3 whitespace-pre-line font-mono",
+    }, hint));
+  }
   return div;
 }
 
