@@ -273,9 +273,11 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
   } catch { /* no credentials */ }
 
   // Explain what config is needed
-  const explainer = h("div", { className: "text-xs text-text-2 mb-4 leading-relaxed" },
-    `${service.name} requires the following configuration to function. These settings are shared across all API keys in this project.`,
-  );
+  const hasRequired = service.credentialsSchema.some((f) => f.required);
+  const explainerText = hasRequired
+    ? `${service.name} needs the following settings to function. These are shared across all API keys in this project.`
+    : `${service.name} supports optional configuration. These settings are shared across all API keys in this project.`;
+  const explainer = h("div", { className: "text-xs text-text-2 mb-4 leading-relaxed" }, explainerText);
   container.appendChild(explainer);
 
   // List required fields
