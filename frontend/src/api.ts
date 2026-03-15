@@ -81,6 +81,8 @@ export interface McpService {
   name: string;
   description: string;
   status: "active" | "planned";
+  category: "media" | "notifications" | "data" | "tools";
+  tools?: string[];
   credentialsSchema?: { key: string; label: string; required: boolean; type?: "text" | "textarea"; hint?: string }[];
 }
 
@@ -161,6 +163,17 @@ export const runnerTokens = {
       body: JSON.stringify({ name }),
     }),
   delete: (id: string) => request("/api/tokens/" + id, { method: "DELETE" }),
+};
+
+// ── ACL ──
+
+export interface ToolAccess {
+  [tool: string]: { allowed: boolean; reason?: string };
+}
+
+export const acl = {
+  checkTools: (serviceId: string, tools: string[]) =>
+    request<ToolAccess>(`/api/acl/${serviceId}/tools?tools=${tools.join(",")}`),
 };
 
 // ── User info from CF Access JWT cookie ──

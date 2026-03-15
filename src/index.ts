@@ -34,6 +34,49 @@ app.get("/api/config", (c) => {
   return c.json({ domain: c.env.DOMAIN || "" });
 });
 
+// ACL tool access check — batch check which tools a user can access
+app.get("/api/acl/:service/tools", async (c) => {
+  const email = (await import("./auth")).getUserEmail(c.req.raw);
+  if (!email) return c.json({ error: "authenticated user email is required" }, 401);
+
+  const service = c.req.param("service");
+  const toolsParam = c.req.query("tools");
+  if (!toolsParam) return c.json({ error: "tools query param required" }, 400);
+
+  const tools = toolsParam.split(",");
+
+  if (!c.env.ACL_URL || !c.env.ACL_SECRET) {
+    // No ACL configured — all tools allowed
+    return c.json(Object.fromEntries(tools.map((t) => [t, { allowed: true }])));
+  }
+
+  const results: Record<string, { allowed: boolean; reason?: string }> = {};
+  await Promise.all(
+    tools.map(async (tool) => {
+      try {
+        const resp = await fetch(`${c.env.ACL_URL}/check`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-ACL-Secret": c.env.ACL_SECRET!,
+          },
+          body: JSON.stringify({ email, service, tool }),
+        });
+        if (resp.ok) {
+          const data = (await resp.json()) as { allowed: boolean; reason?: string };
+          results[tool] = data;
+        } else {
+          results[tool] = { allowed: true }; // fail open
+        }
+      } catch {
+        results[tool] = { allowed: true }; // fail open
+      }
+    }),
+  );
+
+  return c.json(results);
+});
+
 // Mount API routes
 app.route("/", runnerProxy);
 app.route("/", mcpKeys);

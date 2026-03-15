@@ -38,12 +38,15 @@
 
 /* Base resets */
 @layer base {
+  html, body, #app {
+    height: 100%;
+  }
+
   body {
     background: var(--color-surface-0);
     color: var(--color-text-0);
     font-family: var(--font-sans);
     font-size: 13px;
-    min-height: 100vh;
   }
 
   button:not(:disabled) {

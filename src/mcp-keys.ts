@@ -25,6 +25,8 @@ export interface McpService {
   name: string;
   description: string;
   status: "active" | "planned";
+  category: "media" | "notifications" | "data" | "tools";
+  tools?: string[];
   credentialsSchema?: CredentialField[];
 }
 
@@ -35,6 +37,15 @@ export const MCP_SERVICES: McpService[] = [
     name: "yt-mcp",
     description: "Video & Audio Transcription",
     status: "active",
+    category: "media",
+    tools: [
+      "transcribe — Transcribe a YouTube video or audio file",
+      "search — Search YouTube videos",
+      "get_metadata — Get video metadata (title, duration, channel)",
+      "list_transcripts — List available transcripts for a video",
+      "read_transcript — Read a transcript by ID",
+      "get_comments — Get video comments",
+    ],
     credentialsSchema: [
       {
         key: "youtube_cookies",
@@ -50,6 +61,11 @@ export const MCP_SERVICES: McpService[] = [
     name: "pushover",
     description: "Push Notifications",
     status: "active",
+    category: "notifications",
+    tools: [
+      "send_notification — Send a push notification to your devices",
+      "send_emergency — Send an emergency notification that repeats until acknowledged",
+    ],
     credentialsSchema: [
       { key: "pushover_user_key", label: "Pushover User Key", required: true },
       { key: "pushover_api_token", label: "Pushover API Token", required: true },

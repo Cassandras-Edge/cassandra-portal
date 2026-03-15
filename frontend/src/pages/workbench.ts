@@ -2,141 +2,187 @@ import * as api from "../api";
 import { h, btn, input, textarea, field, pill, mono, emptyState, fmtDate, maskKey, copyToClipboard } from "../components/ui";
 import { showModal, hideModal, modalCard } from "../components/modal";
 
-let currentProject: api.Project | null = null;
-let currentService: api.McpService | null = null;
-let allProjects: api.Project[] = [];
-let allServices: api.McpService[] = [];
-let currentTab: "keys" | "credentials" = "keys";
+let currentTab: "tools" | "api-keys" | "configuration" = "tools";
+let toolAccess: api.ToolAccess | null = null;
 
-export async function renderWorkbench(root: HTMLElement) {
+export async function renderServiceDetail(root: HTMLElement, project: api.Project, service: api.McpService) {
   root.innerHTML = "";
+  const container = h("div", { className: "p-6 max-w-[900px]" });
 
-  // Load data
-  [allProjects, allServices] = await Promise.all([api.projects.list(), api.services.list()]);
+  // ── Service Header ──
+  const header = h("div", { className: "mb-5" });
+  const title = h("h1", { className: "text-xl font-semibold mb-1" }, service.name);
+  header.appendChild(title);
 
-  if (!currentProject && allProjects.length > 0) {
-    currentProject = allProjects[0];
-  }
+  const meta = h("div", { className: "flex items-center gap-3 text-xs text-text-2" });
+  meta.appendChild(pill(service.status === "active" ? "Active" : "Planned", service.status === "active" ? "ok" : "neutral"));
+  meta.appendChild(h("span", {}, service.description));
+  header.appendChild(meta);
 
-  // Project header
-  const header = h("div", {
-    className: "flex items-center gap-3 mb-4",
+  // Endpoint
+  api.getDomain().then((domain) => {
+    if (domain) {
+      const endpoint = h("div", { className: "mt-1.5 font-mono text-[11px] text-text-3" }, `${service.id}.${domain}/mcp`);
+      header.appendChild(endpoint);
+    }
   });
+  container.appendChild(header);
 
-  // Project switcher
-  const select = document.createElement("select");
-  select.className =
-    "bg-surface-2 border border-edge rounded-md px-3 py-1.5 text-xs text-text-0 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
-  for (const p of allProjects) {
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = p.kind === "personal" ? `${p.name}` : p.name;
-    if (currentProject && p.id === currentProject.id) opt.selected = true;
-    select.appendChild(opt);
-  }
-  select.addEventListener("change", () => {
-    currentProject = allProjects.find((p) => p.id === select.value) || null;
-    currentService = null;
-    renderWorkbench(root);
-  });
+  // ── Quick Setup ──
+  const setup = h("div", { className: "bg-accent-soft/60 border border-accent/20 rounded-lg p-4 mb-6" });
 
-  header.appendChild(h("span", { className: "text-xs text-text-3 font-medium uppercase tracking-wider" }, "Project"));
-  header.appendChild(select);
-  header.appendChild(btn("+ New Project", { variant: "outline", size: "sm", onClick: () => showNewProjectModal(root) }));
+  const setupLabel = h("div", { className: "text-[10.5px] font-semibold text-accent uppercase tracking-wider mb-3 flex items-center gap-1.5" });
+  setupLabel.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+  setupLabel.appendChild(document.createTextNode(" Quick Setup"));
+  setup.appendChild(setupLabel);
 
-  if (currentProject && currentProject.kind === "shared") {
-    header.appendChild(btn("Members", { variant: "outline", size: "sm", onClick: () => showMembersModal(root) }));
-  }
+  const domain = await api.getDomain();
 
-  root.appendChild(header);
+  // Claude Code CLI
+  const codeLabel = h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Claude Code (CLI)");
+  setup.appendChild(codeLabel);
 
-  // Main layout: sidebar + detail
-  const layout = h("div", { className: "grid grid-cols-[200px_1fr] gap-3 min-h-[400px]" });
+  const codeCmd = `claude mcp add --transport http -H "Authorization: Bearer <your-key>" ${service.id} https://${service.id}.${domain}/mcp`;
+  const codeBox = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 font-mono text-[11px] text-accent break-all leading-relaxed relative mb-4" });
+  codeBox.appendChild(document.createTextNode(codeCmd));
+  const codeCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(codeCmd, codeCopy) });
+  codeCopy.className += " absolute top-2 right-2";
+  codeBox.appendChild(codeCopy);
+  setup.appendChild(codeBox);
 
-  // Service sidebar
-  const sidebar = h("div", { className: "bg-surface-2 border border-edge rounded-lg overflow-hidden" });
-  const sidebarHeader = h("div", {
-    className: "px-4 py-3 border-b border-edge",
-  }, h("span", { className: "text-xs font-medium text-text-1" }, "Services"));
-  sidebar.appendChild(sidebarHeader);
+  // Claude.ai
+  const aiLabel = h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Claude.ai (Web)");
+  setup.appendChild(aiLabel);
 
-  const sidebarBody = h("div", { className: "p-2" });
-  for (const svc of allServices) {
-    const item = h("div", {
-      className: `flex items-center gap-2 px-3 py-2 rounded-md text-xs transition-all ${
-        currentService?.id === svc.id
+  const aiSteps = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 text-[11.5px] text-text-1 leading-relaxed" });
+  const aiUrl = `https://${service.id}.${domain}/mcp`;
+  aiSteps.innerHTML = `
+    <div class="flex flex-col gap-1.5">
+      <div class="flex items-baseline gap-2">
+        <span class="text-text-3 font-medium shrink-0">1.</span>
+        <span>Go to <strong>Settings → MCP Servers → Add</strong> in Claude.ai</span>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-text-3 font-medium shrink-0">2.</span>
+        <span>Enter URL: <code class="font-mono text-accent bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]">${aiUrl}</code>
+          <button class="ml-1 text-[10px] text-text-3 hover:text-accent transition-colors" id="copy-ai-url">copy</button>
+        </span>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-text-3 font-medium shrink-0">3.</span>
+        <span>Add header: <code class="font-mono text-accent bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]">Authorization: Bearer &lt;your-key&gt;</code></span>
+      </div>
+    </div>
+  `;
+  setup.appendChild(aiSteps);
+
+  container.appendChild(setup);
+
+  // Bind copy button for AI URL
+  setTimeout(() => {
+    const copyAiBtn = document.getElementById("copy-ai-url");
+    if (copyAiBtn) {
+      copyAiBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(aiUrl);
+        copyAiBtn.textContent = "copied!";
+        setTimeout(() => { copyAiBtn.textContent = "copy"; }, 2000);
+      });
+    }
+  }, 0);
+
+  // ── Tabs ──
+  const tabs = h("div", { className: "flex gap-0.5 mb-4" });
+  const tabDefs: { id: typeof currentTab; label: string }[] = [
+    { id: "tools", label: "Tools" },
+    { id: "api-keys", label: "API Keys" },
+    { id: "configuration", label: "Configuration" },
+  ];
+  for (const tab of tabDefs) {
+    const tabBtn = h("button", {
+      className: `px-4 py-2 rounded-md text-xs transition-all font-[family-name:var(--font-sans)] ${
+        currentTab === tab.id
           ? "bg-accent-soft text-accent font-medium"
           : "text-text-2 hover:bg-surface-3 hover:text-text-1"
       }`,
+    }, tab.label);
+    tabBtn.addEventListener("click", () => {
+      currentTab = tab.id;
+      renderServiceDetail(root, project, service);
     });
-    item.style.cursor = "pointer";
-
-    const dot = h("span", {
-      className: `w-1.5 h-1.5 rounded-full shrink-0 ${svc.status === "active" ? "bg-ok" : "bg-text-3"}`,
-    });
-    item.appendChild(dot);
-    item.appendChild(h("span", {}, svc.name));
-
-    item.addEventListener("click", () => {
-      currentService = svc;
-      currentTab = "keys";
-      renderWorkbench(root);
-    });
-    sidebarBody.appendChild(item);
+    tabs.appendChild(tabBtn);
   }
-  sidebar.appendChild(sidebarBody);
-  layout.appendChild(sidebar);
+  container.appendChild(tabs);
 
-  // Detail pane
-  const detail = h("div", {});
-
-  if (!currentService) {
-    detail.appendChild(emptyState("Select a service to manage its keys and credentials"));
+  // ── Tab Content ──
+  if (currentTab === "tools") {
+    await renderToolsTab(container, service);
+  } else if (currentTab === "api-keys") {
+    await renderKeysTab(container, project, service);
   } else {
-    // Service header
-    const svcHeader = h("div", { className: "flex justify-between items-start mb-3" });
-    const svcInfo = h("div", {});
-    svcInfo.appendChild(h("h2", { className: "text-base font-semibold mb-0.5" }, currentService.name));
-    svcInfo.appendChild(h("p", { className: "text-xs text-text-2 mb-1.5" }, currentService.description));
-    const statusRow = h("div", { className: "flex items-center gap-2" });
-    statusRow.appendChild(pill(currentService.status === "active" ? "Active" : "Planned", currentService.status === "active" ? "ok" : "neutral"));
-    if (currentService.status === "active") {
-      api.getDomain().then((domain) => {
-        if (domain) statusRow.appendChild(h("span", { className: "text-[11px] text-text-3" }, `${currentService!.id}.${domain}/mcp`));
-      });
-    }
-    svcInfo.appendChild(statusRow);
-    svcHeader.appendChild(svcInfo);
-    detail.appendChild(svcHeader);
-
-    // Tabs
-    const tabs = h("div", { className: "flex gap-0.5 mb-3" });
-    for (const tab of ["keys", "credentials"] as const) {
-      const tabBtn = h("button", {
-        className: `px-4 py-2 rounded-md text-xs transition-all ${
-          currentTab === tab
-            ? "bg-accent-soft text-accent font-medium"
-            : "text-text-2 hover:bg-surface-3 hover:text-text-1"
-        }`,
-      }, tab.charAt(0).toUpperCase() + tab.slice(1));
-      tabBtn.addEventListener("click", () => {
-        currentTab = tab;
-        renderWorkbench(root);
-      });
-      tabs.appendChild(tabBtn);
-    }
-    detail.appendChild(tabs);
-
-    // Tab content
-    if (currentTab === "keys") {
-      await renderKeysTab(detail, currentProject!, currentService);
-    } else {
-      await renderCredentialsTab(detail, currentProject!, currentService);
-    }
+    await renderConfigTab(container, project, service);
   }
 
-  layout.appendChild(detail);
-  root.appendChild(layout);
+  root.appendChild(container);
+}
+
+async function renderToolsTab(container: HTMLElement, service: api.McpService) {
+  if (!service.tools || service.tools.length === 0) {
+    container.appendChild(emptyState("No tools registered for this service."));
+    return;
+  }
+
+  // Fetch ACL access
+  const toolNames = service.tools.map((t) => {
+    const name = t.split(" — ")[0]?.split(" ")[0] || t;
+    return name;
+  });
+
+  try {
+    toolAccess = await api.acl.checkTools(service.id, toolNames);
+  } catch {
+    toolAccess = null; // ACL not configured or error — show all as allowed
+  }
+
+  const countLabel = h("div", { className: "text-xs text-text-3 mb-3" },
+    `${service.tools.length} tools available`);
+  container.appendChild(countLabel);
+
+  const list = h("div", { className: "flex flex-col gap-1" });
+  for (const tool of service.tools) {
+    const parts = tool.split(" — ");
+    const name = parts[0] || tool;
+    const desc = parts[1] || "";
+    const toolKey = name.split(" ")[0];
+
+    const isAllowed = !toolAccess || toolAccess[toolKey]?.allowed !== false;
+    const reason = toolAccess?.[toolKey]?.reason;
+
+    const item = h("div", {
+      className: `flex items-baseline gap-2.5 px-3 py-2.5 rounded-md ${
+        isAllowed ? "bg-surface-2" : "bg-surface-2/50 opacity-50"
+      }`,
+    });
+
+    const nameEl = h("span", {
+      className: `font-mono text-[12px] font-medium whitespace-nowrap ${isAllowed ? "text-accent" : "text-text-3 line-through"}`,
+    }, name);
+    item.appendChild(nameEl);
+
+    if (desc) {
+      item.appendChild(h("span", { className: "text-text-3 text-[11px]" }, "\u2014"));
+      item.appendChild(h("span", { className: `text-[12px] ${isAllowed ? "text-text-2" : "text-text-3"}` }, desc));
+    }
+
+    if (!isAllowed) {
+      const badge = h("span", {
+        className: "ml-auto text-[9.5px] font-medium text-danger bg-danger-soft px-2 py-0.5 rounded-full shrink-0",
+      }, reason || "Restricted");
+      item.appendChild(badge);
+    }
+
+    list.appendChild(item);
+  }
+  container.appendChild(list);
 }
 
 async function renderKeysTab(container: HTMLElement, project: api.Project, service: api.McpService) {
@@ -148,22 +194,18 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
   let serviceKeys: api.McpKey[] = [];
   try {
     serviceKeys = await api.keys.list(project.id, service.id);
-  } catch {
-    // Project might not have keys yet
-  }
+  } catch { /* no keys */ }
 
-  // New key button
   const bar = h("div", { className: "flex justify-between items-center mb-3" });
   bar.appendChild(h("span", { className: "text-xs text-text-3" }, `${serviceKeys.length} key${serviceKeys.length !== 1 ? "s" : ""}`));
   bar.appendChild(btn("+ New Key", { onClick: () => showCreateKeyModal(container, project, service) }));
   container.appendChild(bar);
 
   if (serviceKeys.length === 0) {
-    container.appendChild(emptyState(`No keys for ${service.name} in this project yet.`));
+    container.appendChild(emptyState(`No API keys for ${service.name}. Create one to get started.`));
     return;
   }
 
-  // Keys table
   const table = document.createElement("table");
   table.className = "w-full border-collapse bg-surface-2 border border-edge rounded-lg overflow-hidden";
 
@@ -171,7 +213,7 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
   const headRow = document.createElement("tr");
   for (const col of ["Name", "Key", "Created By", "Created", ""]) {
     const th = document.createElement("th");
-    th.className = "text-left px-4 py-2.5 text-[10.5px] font-medium text-text-3 uppercase tracking-wider bg-surface-3 border-b border-edge";
+    th.className = "text-left px-4 py-2.5 text-[10px] font-medium text-text-3 uppercase tracking-wider bg-surface-3 border-b border-edge";
     th.textContent = col;
     headRow.appendChild(th);
   }
@@ -192,7 +234,7 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
 
     for (const cell of cells) {
       const td = document.createElement("td");
-      td.className = "px-4 py-3 text-[12.5px] border-b border-edge text-text-1 " + (cell.className || "");
+      td.className = "px-4 py-3 text-[12px] border-b border-edge text-text-1 " + (cell.className || "");
       if (cell.el) td.appendChild(cell.el);
       else td.textContent = cell.text || "";
       tr.appendChild(td);
@@ -207,7 +249,8 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
         onClick: async () => {
           if (!confirm(`Delete key "${key.name}"? This cannot be undone.`)) return;
           await api.keys.delete(project.id, service.id, key.key_id);
-          renderWorkbench(container.closest("#app")! as HTMLElement);
+          const root = container.closest("#main-content")! as HTMLElement;
+          renderServiceDetail(root, project, service);
         },
       }),
     );
@@ -218,50 +261,78 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
   container.appendChild(table);
 }
 
-async function renderCredentialsTab(container: HTMLElement, project: api.Project, service: api.McpService) {
+async function renderConfigTab(container: HTMLElement, project: api.Project, service: api.McpService) {
   if (!service.credentialsSchema || service.credentialsSchema.length === 0) {
-    container.appendChild(emptyState(`${service.name} does not require service-level credentials.`));
+    container.appendChild(emptyState(`${service.name} does not require any configuration.`));
     return;
   }
 
   let meta: api.CredentialMeta = { has_credentials: false, updated_at: null, updated_by: null };
   try {
     meta = await api.credentials.get(project.id, service.id);
-  } catch {
-    // No credentials yet
-  }
+  } catch { /* no credentials */ }
 
-  const card = h("div", { className: "bg-surface-2 border border-edge rounded-lg p-5" });
+  // Explain what config is needed
+  const explainer = h("div", { className: "text-xs text-text-2 mb-4 leading-relaxed" },
+    `${service.name} requires the following configuration to function. These settings are shared across all API keys in this project.`,
+  );
+  container.appendChild(explainer);
+
+  // List required fields
+  const fieldsList = h("div", { className: "mb-4" });
+  for (const f of service.credentialsSchema) {
+    const fieldRow = h("div", { className: "flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-md mb-1" });
+
+    const indicator = h("span", {
+      className: `w-1.5 h-1.5 rounded-full shrink-0 ${meta.has_credentials ? "bg-ok" : (f.required ? "bg-warn" : "bg-text-3")}`,
+    });
+    fieldRow.appendChild(indicator);
+
+    fieldRow.appendChild(h("span", { className: "text-[12px] text-text-1 font-medium" }, f.label));
+
+    if (f.required) {
+      fieldRow.appendChild(h("span", { className: "text-[9.5px] text-warn bg-warn-soft px-1.5 py-px rounded-full" }, "Required"));
+    } else {
+      fieldRow.appendChild(h("span", { className: "text-[9.5px] text-text-3 bg-surface-3 px-1.5 py-px rounded-full" }, "Optional"));
+    }
+
+    fieldsList.appendChild(fieldRow);
+  }
+  container.appendChild(fieldsList);
+
+  // Status card
+  const card = h("div", { className: "bg-surface-2 border border-edge rounded-lg p-4" });
 
   if (meta.has_credentials) {
-    card.appendChild(h("div", { className: "flex items-center gap-2 mb-3" },
+    card.appendChild(h("div", { className: "flex items-center gap-2 mb-2" },
       pill("Configured", "ok"),
       h("span", { className: "text-[11px] text-text-3" }, `Updated ${fmtDate(meta.updated_at)} by ${meta.updated_by || "unknown"}`),
     ));
-    card.appendChild(h("p", { className: "text-xs text-text-2 mb-4" },
-      "Credentials are set for this service. All keys in this project will use these credentials.",
-    ));
 
-    const actions = h("div", { className: "flex gap-2" });
-    actions.appendChild(btn("Update Credentials", {
+    const actions = h("div", { className: "flex gap-2 mt-3" });
+    actions.appendChild(btn("Update Configuration", {
       variant: "outline",
-      onClick: () => showCredentialFormModal(container, project, service),
+      onClick: () => showConfigFormModal(container, project, service),
     }));
     actions.appendChild(btn("Remove", {
       variant: "danger",
       onClick: async () => {
-        if (!confirm("Remove credentials? Keys in this project will lose access to this service.")) return;
+        if (!confirm("Remove configuration? API keys in this project will lose access to this service.")) return;
         await api.credentials.remove(project.id, service.id);
-        renderWorkbench(container.closest("#app")! as HTMLElement);
+        const root = container.closest("#main-content")! as HTMLElement;
+        renderServiceDetail(root, project, service);
       },
     }));
     card.appendChild(actions);
   } else {
-    card.appendChild(h("p", { className: "text-xs text-text-2 mb-4" },
-      `Configure your ${service.name} credentials for this project. All keys will share these credentials.`,
+    card.appendChild(h("div", { className: "flex items-center gap-2 mb-2" },
+      h("span", { className: "text-[9.5px] font-medium text-warn bg-warn-soft px-2 py-0.5 rounded-full" }, "Not configured"),
     ));
-    card.appendChild(btn("Set Up Credentials", {
-      onClick: () => showCredentialFormModal(container, project, service),
+    card.appendChild(h("p", { className: "text-xs text-text-2 mb-3" },
+      `Set up configuration to enable ${service.name} for API keys in this project.`,
+    ));
+    card.appendChild(btn("Set Up Configuration", {
+      onClick: () => showConfigFormModal(container, project, service),
     }));
   }
 
@@ -269,84 +340,6 @@ async function renderCredentialsTab(container: HTMLElement, project: api.Project
 }
 
 // ── Modals ──
-
-function showNewProjectModal(root: HTMLElement) {
-  const nameInput = input({ placeholder: "e.g. Production, Client-X" });
-  const body = field("Project Name", nameInput);
-
-  const footer = h("div", { className: "flex justify-end gap-2 mt-1" });
-  footer.appendChild(btn("Cancel", { variant: "outline", onClick: hideModal }));
-  footer.appendChild(btn("Create", {
-    onClick: async () => {
-      const name = nameInput.value.trim();
-      if (!name) return;
-      await api.projects.create(name);
-      hideModal();
-      allProjects = await api.projects.list();
-      currentProject = allProjects.find((p) => p.name === name) || allProjects[0];
-      renderWorkbench(root);
-    },
-  }));
-
-  showModal(modalCard({ title: "New Project", description: "Create a shared project to organize keys and credentials.", body, footer }));
-}
-
-function showMembersModal(root: HTMLElement) {
-  if (!currentProject) return;
-  const projectId = currentProject.id;
-
-  const container = h("div", {});
-
-  const renderMembers = async () => {
-    const memberList = await api.members.list(projectId);
-    container.innerHTML = "";
-
-    for (const m of memberList) {
-      const row = h("div", { className: "flex items-center justify-between py-2 border-b border-edge last:border-0" });
-      row.appendChild(h("div", {},
-        h("span", { className: "text-xs text-text-1" }, m.email),
-        h("span", { className: "text-[10px] text-text-3 ml-2" }, m.role),
-      ));
-      if (m.role !== "owner") {
-        row.appendChild(btn("Remove", {
-          variant: "danger",
-          size: "sm",
-          onClick: async () => {
-            await api.members.remove(projectId, m.email);
-            renderMembers();
-          },
-        }));
-      }
-      container.appendChild(row);
-    }
-
-    // Add member form
-    const addRow = h("div", { className: "flex gap-2 mt-3" });
-    const emailInput = input({ placeholder: "user@example.com" });
-    addRow.appendChild(emailInput);
-    addRow.appendChild(btn("Add", {
-      size: "sm",
-      onClick: async () => {
-        const email = emailInput.value.trim();
-        if (!email) return;
-        try {
-          await api.members.add(projectId, email);
-          renderMembers();
-        } catch (e) {
-          alert((e as Error).message);
-        }
-      },
-    }));
-    container.appendChild(addRow);
-  };
-
-  renderMembers();
-
-  const footer = h("div", { className: "flex justify-end mt-2" });
-  footer.appendChild(btn("Done", { onClick: () => { hideModal(); renderWorkbench(root); } }));
-
-  showModal(modalCard({ title: "Project Members", description: `Manage members for ${currentProject.name}`, body: container, footer }));
-}
 
 function showCreateKeyModal(container: HTMLElement, project: api.Project, service: api.McpService) {
   const nameInput = input({ placeholder: "e.g. laptop, ci-pipeline" });
@@ -364,53 +357,53 @@ function showCreateKeyModal(container: HTMLElement, project: api.Project, servic
     },
   }));
 
-  showModal(modalCard({ title: `New ${service.name} Key`, description: `Create a key scoped to ${project.name} / ${service.name}.`, body, footer }));
+  showModal(modalCard({ title: `New ${service.name} API Key`, description: `Create a key scoped to ${project.name} / ${service.name}.`, body, footer }));
 }
 
 async function showKeyCreatedModal(container: HTMLElement, created: api.CreatedKey, service: api.McpService) {
   const body = h("div", {});
 
-  // Warning
   const warn = h("div", { className: "bg-warn-soft border border-warn/12 rounded-md px-3 py-2.5 text-[11.5px] text-warn mb-4 flex items-center gap-2" });
-  warn.textContent = "Copy now — the key won't be shown again.";
+  warn.textContent = "Copy now \u2014 the key won't be shown again.";
   body.appendChild(warn);
 
-  // Key display
   const keyBox = h("div", { className: "bg-surface-3 border border-edge rounded-md p-3 font-mono text-[11.5px] text-accent break-all leading-relaxed relative mb-3" });
   const keyLabel = h("span", { className: "font-sans text-[9.5px] text-text-3 uppercase tracking-wider block mb-1" }, "API Key");
-  const keyValue = h("span", {}, created.key);
   keyBox.appendChild(keyLabel);
-  keyBox.appendChild(keyValue);
+  keyBox.appendChild(h("span", {}, created.key));
   const copyBtn = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(created.key, copyBtn) });
   copyBtn.className += " absolute top-2.5 right-2.5";
   keyBox.appendChild(copyBtn);
   body.appendChild(keyBox);
 
   // CLI command
-  const cliLabel = h("div", { className: "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "Claude CLI");
-  body.appendChild(cliLabel);
   const domain = await api.getDomain();
   const cliCmd = `claude mcp add --transport http -H "Authorization: Bearer ${created.key}" ${service.id} https://${service.id}.${domain}/mcp`;
-  const cliBox = h("div", { className: "bg-surface-3 border border-edge rounded-md p-3 font-mono text-[11.5px] text-accent break-all leading-relaxed relative" });
-  const cliValue = h("span", {}, cliCmd);
-  cliBox.appendChild(cliValue);
+  const cliLabel = h("div", { className: "text-[10px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "Claude Code (CLI)");
+  body.appendChild(cliLabel);
+  const cliBox = h("div", { className: "bg-surface-3 border border-edge rounded-md p-3 font-mono text-[11px] text-accent break-all leading-relaxed relative" });
+  cliBox.appendChild(h("span", {}, cliCmd));
   const cliCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(cliCmd, cliCopy) });
   cliCopy.className += " absolute top-2.5 right-2.5";
   cliBox.appendChild(cliCopy);
   body.appendChild(cliBox);
 
-  const footer = h("div", { className: "flex justify-end mt-2" });
+  const footer = h("div", { className: "flex justify-end mt-3" });
   footer.appendChild(btn("Done", {
     onClick: () => {
       hideModal();
-      renderWorkbench(container.closest("#app")! as HTMLElement);
+      const root = container.closest("#main-content")! as HTMLElement;
+      import("../main").then(({ getState }) => {
+        const { currentProject, currentService } = getState();
+        if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
+      });
     },
   }));
 
   showModal(modalCard({ title: "Key Created", body, footer }));
 }
 
-function showCredentialFormModal(container: HTMLElement, project: api.Project, service: api.McpService) {
+function showConfigFormModal(container: HTMLElement, project: api.Project, service: api.McpService) {
   const body = h("div", {});
   const inputs: { key: string; input: HTMLInputElement | HTMLTextAreaElement }[] = [];
 
@@ -434,7 +427,11 @@ function showCredentialFormModal(container: HTMLElement, project: api.Project, s
       try {
         await api.credentials.set(project.id, service.id, creds);
         hideModal();
-        renderWorkbench(container.closest("#app")! as HTMLElement);
+        const root = container.closest("#main-content")! as HTMLElement;
+        import("../main").then(({ getState }) => {
+          const { currentProject, currentService } = getState();
+          if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
+        });
       } catch (e) {
         alert((e as Error).message);
       }
@@ -442,8 +439,8 @@ function showCredentialFormModal(container: HTMLElement, project: api.Project, s
   }));
 
   showModal(modalCard({
-    title: `${service.name} Credentials`,
-    description: `Set credentials for ${project.name}. These are shared across all keys in this project.`,
+    title: `${service.name} Configuration`,
+    description: `Configure settings for ${project.name}. Shared across all API keys in this project.`,
     body,
     footer,
   }));
