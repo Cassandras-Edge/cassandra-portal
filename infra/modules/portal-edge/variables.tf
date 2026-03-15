@@ -36,7 +36,7 @@ variable "allowed_email_domains" {
   default     = []
 }
 
-variable "google_idp_id" {
-  description = "CF Access Google identity provider ID"
+variable "idp_id" {
+  description = "CF Access identity provider ID"
   type        = string
 }

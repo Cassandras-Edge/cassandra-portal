@@ -62,6 +62,13 @@ function render() {
   avatar.textContent = email[0]?.toUpperCase() || "?";
   user.appendChild(avatar);
   user.appendChild(document.createTextNode(email));
+
+  const logout = document.createElement("a");
+  logout.href = "/cdn-cgi/access/logout";
+  logout.className = "text-[11px] text-text-3 hover:text-text-1 transition-colors ml-1";
+  logout.textContent = "Sign out";
+  user.appendChild(logout);
+
   topbar.appendChild(user);
 
   app.appendChild(topbar);

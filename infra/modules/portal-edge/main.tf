@@ -37,7 +37,7 @@ resource "cloudflare_zero_trust_access_application" "portal" {
   type                      = "self_hosted"
   session_duration          = "24h"
   auto_redirect_to_identity = true
-  allowed_idps              = [var.google_idp_id]
+  allowed_idps              = [var.idp_id]
 }
 
 # Access policy — allow specific Google emails
