@@ -100,10 +100,11 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
       <div class="flex items-baseline gap-2">
         <span class="text-text-3 font-medium shrink-0">Header</span>
         <code class="font-mono text-text-1 bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]">Authorization: Bearer &lt;your-key&gt;</code>
+        <button class="text-[10px] text-text-3 hover:text-accent transition-colors" id="copy-generic-header">copy</button>
       </div>
       <div class="flex items-baseline gap-2">
         <span class="text-text-3 font-medium shrink-0">Transport</span>
-        <span>HTTP with SSE (Streamable HTTP)</span>
+        <span>MCP (HTTP)</span>
       </div>
     </div>
   `;
@@ -127,6 +128,14 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
         navigator.clipboard.writeText(mcpUrl);
         copyGenericBtn.textContent = "copied!";
         setTimeout(() => { copyGenericBtn.textContent = "copy"; }, 2000);
+      });
+    }
+    const copyHeaderBtn = document.getElementById("copy-generic-header");
+    if (copyHeaderBtn) {
+      copyHeaderBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText("Authorization: Bearer <your-key>");
+        copyHeaderBtn.textContent = "copied!";
+        setTimeout(() => { copyHeaderBtn.textContent = "copy"; }, 2000);
       });
     }
   }, 0);
