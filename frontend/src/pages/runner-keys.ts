@@ -226,7 +226,7 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
     const vaultCol = h("div", { className: "flex-1 min-w-0" });
     vaultCol.appendChild(h("div", { className: "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "Vault"));
     const vaultSelect = document.createElement("select");
-    vaultSelect.className = "w-full bg-surface-0 border border-edge rounded-md px-3 py-2 text-[12px] text-text-1 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
+    vaultSelect.className = "w-full px-3 py-2 bg-surface-3 border border-edge rounded-md text-[12.5px] text-text-0 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
     vaultSelect.appendChild(h("option", { value: "" }, "Loading vaults..."));
     vaultSelect.disabled = true;
     vaultCol.appendChild(vaultSelect);
