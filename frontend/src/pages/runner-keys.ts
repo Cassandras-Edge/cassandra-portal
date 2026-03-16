@@ -8,7 +8,7 @@ export async function renderRunnerDetail(root: HTMLElement) {
 
   // ── Header ──
   const header = h("div", { className: "mb-5" });
-  header.appendChild(h("h1", { className: "text-xl font-semibold mb-1" }, "runner"));
+  header.appendChild(h("h1", { className: "text-xl font-semibold mb-1" }, "Claude Code Runner"));
   const meta = h("div", { className: "flex items-center gap-3 text-xs text-text-2" });
   meta.appendChild(pill("Active", "ok"));
   meta.appendChild(h("span", {}, "Claude Code Runner — isolated sessions in k8s pods"));

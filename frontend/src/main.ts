@@ -137,7 +137,7 @@ function render() {
   const isRunnerActive = selectedView?.type === "runner";
   sidebarBody.appendChild(
     makeSidebarItem(
-      "runner",
+      "Claude Code Runner",
       true,
       isRunnerActive,
       undefined,
