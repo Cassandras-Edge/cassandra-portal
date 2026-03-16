@@ -30,8 +30,8 @@ export function setCurrentProject(project: api.Project | null) {
 function viewToPath(view: SelectedView | null): string {
   if (!view) return "/";
   if (view.type === "mcp") return `/service/${view.service.id}`;
-  if (view.type === "runner") return "/runner";
-  if (view.type === "acl") return "/acl";
+  if (view.type === "runner") return "/platform/runner";
+  if (view.type === "acl") return "/platform/acl";
   return "/";
 }
 
@@ -41,8 +41,8 @@ function pathToView(path: string): SelectedView | null {
     const svc = allServices.find((s) => s.id === id);
     if (svc) return { type: "mcp", service: svc };
   }
-  if (path === "/runner") return { type: "runner" };
-  if (path === "/acl") return { type: "acl" };
+  if (path === "/platform/runner") return { type: "runner" };
+  if (path === "/platform/acl") return { type: "acl" };
   // Default: first MCP service
   if (allServices.length > 0) return { type: "mcp", service: allServices[0] };
   return null;
