@@ -86,57 +86,6 @@ app.get("/api/acl/:service/tools", async (c) => {
   return c.json(results);
 });
 
-// DEBUG: ACL connectivity diagnostic (remove after debugging)
-app.get("/api/debug/acl", async (c) => {
-  const { getUserEmail } = await import("./auth");
-  const email = getUserEmail(c.req.raw);
-
-  const debug: Record<string, unknown> = {
-    step1_email: email || "(empty)",
-    step2_acl_url: c.env.ACL_URL ? "set" : "NOT SET",
-    step3_acl_secret: c.env.ACL_SECRET ? "set" : "NOT SET",
-    step4_acl_service_binding: c.env.ACL_SERVICE ? "set" : "NOT SET",
-    step5_cf_headers: {
-      "Cf-Access-Authenticated-User-Email": c.req.header("Cf-Access-Authenticated-User-Email") || "(missing)",
-      "Cf-Access-Jwt-Assertion": c.req.header("Cf-Access-Jwt-Assertion") ? "(present)" : "(missing)",
-      "Cookie_has_CF_Authorization": (c.req.header("Cookie") || "").includes("CF_Authorization"),
-    },
-  };
-
-  // Try calling ACL whoami via Service Binding (preferred) or ACL_URL fallback
-  if (email && c.env.ACL_SECRET) {
-    try {
-      let resp: Response;
-      if (c.env.ACL_SERVICE) {
-        debug.step6_method = "service_binding";
-        resp = await c.env.ACL_SERVICE.fetch(new Request("https://acl-internal/acl/whoami", {
-          headers: {
-            "X-ACL-Secret": c.env.ACL_SECRET,
-            "X-Admin-Email": email,
-          },
-        }));
-      } else if (c.env.ACL_URL) {
-        debug.step6_method = "acl_url_fetch";
-        resp = await fetch(`${c.env.ACL_URL}/acl/whoami`, {
-          headers: {
-            "X-ACL-Secret": c.env.ACL_SECRET,
-            "X-Admin-Email": email,
-          },
-        });
-      } else {
-        debug.step6_method = "none";
-        resp = new Response("no acl", { status: 501 });
-      }
-      debug.step6_acl_whoami_status = resp.status;
-      debug.step6_acl_whoami_body = await resp.json().catch(() => resp.statusText);
-    } catch (e) {
-      debug.step6_acl_whoami_error = (e as Error).message;
-    }
-  }
-
-  return c.json(debug);
-});
-
 // Mount API routes
 app.route("/", runnerProxy);
 app.route("/", mcpKeys);
