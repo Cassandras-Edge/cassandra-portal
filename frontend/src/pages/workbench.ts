@@ -59,86 +59,55 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
   setup.appendChild(codeBox);
 
   // Claude.ai
-  const aiLabel = h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Claude.ai (Web)");
-  setup.appendChild(aiLabel);
-
-  const aiSteps = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 text-[11.5px] text-text-1 leading-relaxed" });
+  setup.appendChild(h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Claude.ai (Web)"));
   const aiUrl = `https://${service.id}.${domain}/mcp`;
-  aiSteps.innerHTML = `
-    <div class="flex flex-col gap-1.5">
-      <div class="flex items-baseline gap-2">
-        <span class="text-text-3 font-medium shrink-0">1.</span>
-        <span>Go to <strong>Settings → MCP Servers → Add</strong> in Claude.ai</span>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-text-3 font-medium shrink-0">2.</span>
-        <span>Enter URL: <code class="font-mono text-accent bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]">${aiUrl}</code>
-          <button class="ml-1 text-[10px] text-text-3 hover:text-accent transition-colors" id="copy-ai-url">copy</button>
-        </span>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-text-3 font-medium shrink-0">3.</span>
-        <span>Sign in when prompted — authentication is handled automatically via OAuth</span>
-      </div>
-    </div>
-  `;
-  setup.appendChild(aiSteps);
+  const aiBox = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 text-[11.5px] text-text-1 leading-relaxed mb-4" });
+  const aiStep1 = h("div", { className: "flex items-baseline gap-2 mb-1" });
+  aiStep1.appendChild(h("span", { className: "text-text-3 font-medium shrink-0" }, "1."));
+  const step1text = h("span", {});
+  step1text.innerHTML = `Go to <strong>Settings \u2192 MCP Servers \u2192 Add</strong> in Claude.ai`;
+  aiStep1.appendChild(step1text);
+  aiBox.appendChild(aiStep1);
+  const aiStep2 = h("div", { className: "flex items-center gap-2 mb-1" });
+  aiStep2.appendChild(h("span", { className: "text-text-3 font-medium shrink-0" }, "2."));
+  aiStep2.appendChild(h("span", {}, "Enter URL:"));
+  aiStep2.appendChild(h("code", { className: "font-mono text-accent bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]" }, aiUrl));
+  const aiUrlCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(aiUrl, aiUrlCopy) });
+  aiStep2.appendChild(aiUrlCopy);
+  aiBox.appendChild(aiStep2);
+  const aiStep3 = h("div", { className: "flex items-baseline gap-2" });
+  aiStep3.appendChild(h("span", { className: "text-text-3 font-medium shrink-0" }, "3."));
+  aiStep3.appendChild(h("span", {}, "Sign in when prompted \u2014 authentication is handled automatically via OAuth"));
+  aiBox.appendChild(aiStep3);
+  setup.appendChild(aiBox);
 
-  // Generic MCP client (any HTTP client)
-  const genericLabel = h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5 mt-4" }, "Other MCP Clients (HTTP)");
-  setup.appendChild(genericLabel);
-
+  // Generic MCP client
+  setup.appendChild(h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Other MCP Clients"));
   const mcpUrl = `https://${service.id}.${domain}/mcp`;
-  const genericSteps = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 text-[11.5px] text-text-1 leading-relaxed" });
-  genericSteps.innerHTML = `
-    <div class="flex flex-col gap-1.5">
-      <div class="flex items-baseline gap-2">
-        <span class="text-text-3 font-medium shrink-0">URL</span>
-        <code class="font-mono text-accent bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]">${mcpUrl}</code>
-        <button class="text-[10px] text-text-3 hover:text-accent transition-colors" id="copy-generic-url">copy</button>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-text-3 font-medium shrink-0">Header</span>
-        <code class="font-mono text-text-1 bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]">Authorization: Bearer &lt;your-key&gt;</code>
-        <button class="text-[10px] text-text-3 hover:text-accent transition-colors" id="copy-generic-header">copy</button>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-text-3 font-medium shrink-0">Transport</span>
-        <span>MCP (HTTP)</span>
-      </div>
-    </div>
-  `;
-  setup.appendChild(genericSteps);
+  const headerVal = "Authorization: Bearer <your-key>";
+  const genericBox = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 text-[11.5px] text-text-1 leading-relaxed" });
+  // URL row
+  const urlRow = h("div", { className: "flex items-center gap-2 mb-1.5" });
+  urlRow.appendChild(h("span", { className: "text-text-3 font-medium shrink-0 w-16" }, "URL"));
+  urlRow.appendChild(h("code", { className: "font-mono text-accent bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]" }, mcpUrl));
+  const urlCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(mcpUrl, urlCopy) });
+  urlRow.appendChild(urlCopy);
+  genericBox.appendChild(urlRow);
+  // Header row
+  const headerRow = h("div", { className: "flex items-center gap-2 mb-1.5" });
+  headerRow.appendChild(h("span", { className: "text-text-3 font-medium shrink-0 w-16" }, "Header"));
+  headerRow.appendChild(h("code", { className: "font-mono text-text-1 bg-surface-3 px-1.5 py-0.5 rounded text-[10.5px]" }, headerVal));
+  const headerCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(headerVal, headerCopy) });
+  headerRow.appendChild(headerCopy);
+  genericBox.appendChild(headerRow);
+  // Transport row
+  const transportRow = h("div", { className: "flex items-center gap-2" });
+  transportRow.appendChild(h("span", { className: "text-text-3 font-medium shrink-0 w-16" }, "Transport"));
+  transportRow.appendChild(h("span", {}, "MCP (HTTP)"));
+  genericBox.appendChild(transportRow);
+  setup.appendChild(genericBox);
 
   container.appendChild(setup);
-
-  // Bind copy buttons for AI URL and generic URL
-  setTimeout(() => {
-    const copyAiBtn = document.getElementById("copy-ai-url");
-    if (copyAiBtn) {
-      copyAiBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(aiUrl);
-        copyAiBtn.textContent = "copied!";
-        setTimeout(() => { copyAiBtn.textContent = "copy"; }, 2000);
-      });
-    }
-    const copyGenericBtn = document.getElementById("copy-generic-url");
-    if (copyGenericBtn) {
-      copyGenericBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(mcpUrl);
-        copyGenericBtn.textContent = "copied!";
-        setTimeout(() => { copyGenericBtn.textContent = "copy"; }, 2000);
-      });
-    }
-    const copyHeaderBtn = document.getElementById("copy-generic-header");
-    if (copyHeaderBtn) {
-      copyHeaderBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText("Authorization: Bearer <your-key>");
-        copyHeaderBtn.textContent = "copied!";
-        setTimeout(() => { copyHeaderBtn.textContent = "copy"; }, 2000);
-      });
-    }
-  }, 0);
 
   // ── Tabs ──
   const tabs = h("div", { className: "flex gap-0.5 mb-4" });
@@ -292,7 +261,19 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
 
     const actionTd = document.createElement("td");
     actionTd.className = "px-4 py-3 text-right border-b border-edge";
-    actionTd.appendChild(
+    const actionBtns = h("div", { className: "flex justify-end gap-2" });
+    actionBtns.appendChild(
+      btn("Rotate", {
+        variant: "outline",
+        size: "sm",
+        onClick: async () => {
+          if (!confirm(`Rotate key "${key.name}"? The old key will stop working immediately.`)) return;
+          const result = await api.keys.rotate(project.id, service.id, key.key_id);
+          showKeyCreatedModal(container, { key: result.key, name: result.name, service: service.id, project_id: project.id, created_at: new Date().toISOString() }, service);
+        },
+      }),
+    );
+    actionBtns.appendChild(
       btn("Delete", {
         variant: "danger",
         size: "sm",
@@ -304,6 +285,7 @@ async function renderKeysTab(container: HTMLElement, project: api.Project, servi
         },
       }),
     );
+    actionTd.appendChild(actionBtns);
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
   }

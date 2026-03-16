@@ -234,4 +234,60 @@ app.delete("/api/projects/:projectId/services/:svc/keys/:key", async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Rotate MCP Key ──
+
+app.post("/api/projects/:projectId/services/:svc/keys/:key/rotate", async (c) => {
+  const email = getUserEmail(c.req.raw);
+  if (!email) return c.json({ error: "authenticated user email is required" }, 401);
+
+  const { projectId, svc, key: oldKey } = c.req.param();
+  const role = await getMemberRole(c.env.PORTAL_DB, projectId, email);
+  if (!role) return c.json({ error: "not found" }, 404);
+
+  if (!oldKey.startsWith("mcp_")) return c.json({ error: "invalid key" }, 400);
+
+  // Verify key belongs to this project+service
+  const keyRow = await c.env.PORTAL_DB
+    .prepare("SELECT name FROM mcp_keys WHERE key_id = ? AND project_id = ? AND service_id = ?")
+    .bind(oldKey, projectId, svc)
+    .first<{ name: string }>();
+
+  if (!keyRow) return c.json({ error: "key not found" }, 404);
+
+  // Read old KV metadata (has credentials, etc.)
+  const oldMeta = await c.env.MCP_KEYS.get(oldKey, "json") as Record<string, unknown> | null;
+
+  // Generate new key
+  const newKey = `mcp_${randomHex(32)}`;
+  const now = new Date().toISOString();
+
+  // Write new KV entry with same metadata
+  const newMeta = {
+    ...oldMeta,
+    name: keyRow.name,
+    service: svc,
+    created_at: now,
+    created_by: email,
+    project_id: projectId,
+  };
+  await c.env.MCP_KEYS.put(newKey, JSON.stringify(newMeta));
+
+  // Delete old KV entry
+  await c.env.MCP_KEYS.delete(oldKey);
+
+  // Update D1
+  await c.env.PORTAL_DB
+    .prepare("UPDATE mcp_keys SET key_id = ?, created_by = ?, created_at = datetime('now') WHERE key_id = ?")
+    .bind(newKey, email, oldKey)
+    .run();
+
+  c.executionCtx.waitUntil(
+    pushMetrics(c.env, [
+      counter("mcp_key_operations_total", 1, { operation: "rotate", service: svc }),
+    ]),
+  );
+
+  return c.json({ key: newKey, name: keyRow.name });
+});
+
 export { app as credentials };

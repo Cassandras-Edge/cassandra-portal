@@ -141,6 +141,8 @@ export const keys = {
     }),
   delete: (projectId: string, serviceId: string, keyId: string) =>
     request(`/api/projects/${projectId}/services/${serviceId}/keys/${keyId}`, { method: "DELETE" }),
+  rotate: (projectId: string, serviceId: string, keyId: string) =>
+    request<{ key: string; name: string }>(`/api/projects/${projectId}/services/${serviceId}/keys/${keyId}/rotate`, { method: "POST" }),
 };
 
 // ── Runner tokens (legacy, separate from workbench) ──
