@@ -228,14 +228,16 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
     addForm.style.gap = "8px";
     addForm.style.alignItems = "end";
 
-    const inputCls = "w-full h-[38px] px-3 bg-surface-3 border border-edge rounded-md text-[12.5px] text-text-0 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
+    const baseCls = "w-full px-3 bg-surface-3 border border-edge rounded-md text-[12.5px] text-text-0 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
     const labelCls = "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5";
+    const fixedH = "38px"; // shared inline height — bulletproof across input/select
 
     // Vault column
     const vaultCol = h("div", {});
     vaultCol.appendChild(h("div", { className: labelCls }, "Vault"));
     const vaultSelect = document.createElement("select");
-    vaultSelect.className = `${inputCls} appearance-none`;
+    vaultSelect.className = baseCls;
+    vaultSelect.style.height = fixedH;
     vaultSelect.appendChild(h("option", { value: "" }, "Loading vaults..."));
     vaultSelect.disabled = true;
     vaultCol.appendChild(vaultSelect);
@@ -264,7 +266,8 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
     const passCol = h("div", {});
     passCol.appendChild(h("div", { className: labelCls }, "E2EE Password"));
     const vaultPassInput = input({ placeholder: "E2EE password", type: "password" });
-    vaultPassInput.className = inputCls;
+    vaultPassInput.className = baseCls;
+    vaultPassInput.style.height = fixedH;
     passCol.appendChild(vaultPassInput);
     addForm.appendChild(passCol);
 
