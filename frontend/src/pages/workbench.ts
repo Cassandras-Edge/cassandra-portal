@@ -19,10 +19,18 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
   meta.appendChild(h("span", {}, service.description));
   header.appendChild(meta);
 
-  // Endpoint
+  // Endpoint — clickable to copy
   api.getDomain().then((domain) => {
     if (domain) {
-      const endpoint = h("div", { className: "mt-1.5 font-mono text-[11px] text-text-3" }, `${service.id}.${domain}/mcp`);
+      const url = `https://${service.id}.${domain}/mcp`;
+      const endpoint = h("div", { className: "mt-1.5 flex items-center gap-2" });
+      const urlText = h("span", { className: "font-mono text-[11px] text-text-3 cursor-pointer hover:text-accent transition-colors" }, url);
+      urlText.title = "Click to copy";
+      urlText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        copyToClipboard(url, urlText);
+      });
+      endpoint.appendChild(urlText);
       header.appendChild(endpoint);
     }
   });
