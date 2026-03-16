@@ -221,14 +221,21 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
 
   // Add vault form — dropdown populated from Obsidian API
   if (config.auth_token.configured) {
-    const inputH = "h-[38px]"; // explicit height so select and input match exactly
+    // Use CSS grid for guaranteed equal-width columns + auto button
+    const addForm = document.createElement("div");
+    addForm.style.display = "grid";
+    addForm.style.gridTemplateColumns = "1fr 1fr auto";
+    addForm.style.gap = "8px";
+    addForm.style.alignItems = "end";
 
-    const addForm = h("div", { className: "flex items-end gap-2" });
+    const inputCls = "w-full h-[38px] px-3 bg-surface-3 border border-edge rounded-md text-[12.5px] text-text-0 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
+    const labelCls = "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5";
 
-    const vaultCol = h("div", { className: "flex-1 min-w-0" });
-    vaultCol.appendChild(h("div", { className: "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "Vault"));
+    // Vault column
+    const vaultCol = h("div", {});
+    vaultCol.appendChild(h("div", { className: labelCls }, "Vault"));
     const vaultSelect = document.createElement("select");
-    vaultSelect.className = `w-full ${inputH} px-3 bg-surface-3 border border-edge rounded-md text-[12.5px] text-text-0 outline-hidden focus:border-accent font-[family-name:var(--font-sans)] appearance-none`;
+    vaultSelect.className = `${inputCls} appearance-none`;
     vaultSelect.appendChild(h("option", { value: "" }, "Loading vaults..."));
     vaultSelect.disabled = true;
     vaultCol.appendChild(vaultSelect);
@@ -253,15 +260,17 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
       vaultSelect.appendChild(h("option", { value: "" }, "Failed to load vaults"));
     });
 
-    const passCol = h("div", { className: "flex-1 min-w-0" });
-    passCol.appendChild(h("div", { className: "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "E2EE Password"));
+    // Password column
+    const passCol = h("div", {});
+    passCol.appendChild(h("div", { className: labelCls }, "E2EE Password"));
     const vaultPassInput = input({ placeholder: "E2EE password", type: "password" });
-    vaultPassInput.className += ` ${inputH}`;
+    vaultPassInput.className = inputCls;
     passCol.appendChild(vaultPassInput);
     addForm.appendChild(passCol);
-    const btnCol = h("div", { className: "shrink-0" });
-    // Invisible spacer matching label height above inputs
-    btnCol.appendChild(h("div", { className: "text-[10.5px] uppercase tracking-wider mb-1.5 invisible" }, "\u00A0"));
+
+    // Button column — invisible label spacer for alignment
+    const btnCol = h("div", {});
+    btnCol.appendChild(h("div", { className: `${labelCls} invisible` }, "\u00A0"));
     btnCol.appendChild(
       btn("Add Vault", {
         onClick: async () => {
