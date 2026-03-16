@@ -223,15 +223,11 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
   if (config.auth_token.configured) {
     const addForm = h("div", { className: "flex items-end gap-2" });
 
-    const selectWrapper = h("div", { className: "flex-1" });
-    const selectLabel = h("div", { className: "text-[10.5px] font-medium text-text-2 mb-1" }, "Vault");
     const vaultSelect = document.createElement("select");
     vaultSelect.className = "w-full bg-surface-0 border border-edge rounded-md px-3 py-2 text-[12px] text-text-1 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
     vaultSelect.appendChild(h("option", { value: "" }, "Loading vaults..."));
     vaultSelect.disabled = true;
-    selectWrapper.appendChild(selectLabel);
-    selectWrapper.appendChild(vaultSelect);
-    addForm.appendChild(selectWrapper);
+    addForm.appendChild(h("div", { className: "flex-1" }, field("Vault", vaultSelect)));
 
     // Fetch vaults from Obsidian API
     const configuredVaultNames = new Set(config.vaults.map((v) => v.vault));
