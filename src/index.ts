@@ -4,6 +4,7 @@ import { runnerProxy } from "./runner-proxy";
 import { mcpKeys } from "./mcp-keys";
 import { projects } from "./projects";
 import { credentials } from "./credentials";
+import { aclAdmin } from "./acl-admin";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -82,6 +83,7 @@ app.route("/", runnerProxy);
 app.route("/", mcpKeys);
 app.route("/", projects);
 app.route("/", credentials);
+app.route("/", aclAdmin);
 
 // For non-API routes, static assets are served by Workers Static Assets (assets.directory in wrangler.jsonc).
 // This catch-all returns index.html for SPA client-side routing.

@@ -2,14 +2,16 @@ import "./style.css";
 import { getUserEmailFromCookie } from "./api";
 import { renderServiceDetail } from "./pages/workbench";
 import { renderRunnerDetail } from "./pages/runner-keys";
+import { renderAclPage } from "./pages/acl";
 import * as api from "./api";
 
-type SelectedView = { type: "mcp"; service: api.McpService } | { type: "runner" };
+type SelectedView = { type: "mcp"; service: api.McpService } | { type: "runner" } | { type: "acl" };
 
 let allProjects: api.Project[] = [];
 let allServices: api.McpService[] = [];
 let currentProject: api.Project | null = null;
 let selectedView: SelectedView | null = null;
+let isAdmin = false;
 
 export function getState() {
   return {
@@ -26,9 +28,19 @@ export function setCurrentProject(project: api.Project | null) {
 }
 
 async function loadData() {
-  [allProjects, allServices] = await Promise.all([api.projects.list(), api.services.list()]);
+  const [projectsResult, servicesResult] = await Promise.all([api.projects.list(), api.services.list()]);
+  allProjects = projectsResult;
+  allServices = servicesResult;
   if (!currentProject && allProjects.length > 0) currentProject = allProjects[0];
   if (!selectedView && allServices.length > 0) selectedView = { type: "mcp", service: allServices[0] };
+
+  // Check admin status (non-blocking — if ACL is not configured, defaults to false)
+  try {
+    const whoami = await api.aclAdmin.whoami();
+    isAdmin = whoami.isAdmin;
+  } catch {
+    isAdmin = false;
+  }
 }
 
 function render() {
@@ -145,6 +157,20 @@ function render() {
     ),
   );
 
+  // Access Control (admin only)
+  if (isAdmin) {
+    const isAclActive = selectedView?.type === "acl";
+    sidebarBody.appendChild(
+      makeSidebarItem(
+        "Access Control",
+        true,
+        isAclActive,
+        undefined,
+        () => { selectedView = { type: "acl" }; render(); },
+      ),
+    );
+  }
+
   sidebar.appendChild(sidebarBody);
   layout.appendChild(sidebar);
 
@@ -162,6 +188,8 @@ function render() {
     checkConfigStatus();
   } else if (selectedView?.type === "runner") {
     renderRunnerDetail(content);
+  } else if (selectedView?.type === "acl") {
+    renderAclPage(content);
   }
 }
 

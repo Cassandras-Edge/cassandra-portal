@@ -178,6 +178,72 @@ export const acl = {
     request<ToolAccess>(`/api/acl/${serviceId}/tools?tools=${tools.join(",")}`),
 };
 
+// ── ACL Admin ──
+
+const jsonHeaders = { "Content-Type": "application/json" };
+
+export interface AclWhoami {
+  email: string;
+  role: string;
+  groups: string[];
+  isAdmin: boolean;
+}
+
+export interface AclUserEntry {
+  role?: "admin" | "user";
+  services?: "*" | string[];
+  groups?: string[];
+}
+
+export interface AclServiceConfig {
+  access?: "allow" | "deny";
+  tools?: { allow?: string[]; deny?: string[] };
+}
+
+export interface AclGroupEntry {
+  services: Record<string, AclServiceConfig>;
+}
+
+export interface AclDomainEntry {
+  role?: "admin" | "user";
+  groups?: string[];
+}
+
+export const aclAdmin = {
+  whoami: () => request<AclWhoami>("/api/acl/admin/whoami"),
+  users: {
+    list: () => request<Record<string, AclUserEntry>>("/api/acl/admin/users"),
+    upsert: (email: string, user: AclUserEntry) =>
+      request(`/api/acl/admin/users/${encodeURIComponent(email)}`, {
+        method: "PUT", headers: jsonHeaders, body: JSON.stringify(user),
+      }),
+    remove: (email: string) =>
+      request(`/api/acl/admin/users/${encodeURIComponent(email)}`, { method: "DELETE" }),
+  },
+  groups: {
+    list: () => request<Record<string, AclGroupEntry>>("/api/acl/admin/groups"),
+    upsert: (name: string, group: AclGroupEntry) =>
+      request(`/api/acl/admin/groups/${encodeURIComponent(name)}`, {
+        method: "PUT", headers: jsonHeaders, body: JSON.stringify(group),
+      }),
+    remove: (name: string) =>
+      request(`/api/acl/admin/groups/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  },
+  domains: {
+    list: () => request<Record<string, AclDomainEntry>>("/api/acl/admin/domains"),
+    upsert: (domain: string, def: AclDomainEntry) =>
+      request(`/api/acl/admin/domains/${encodeURIComponent(domain)}`, {
+        method: "PUT", headers: jsonHeaders, body: JSON.stringify(def),
+      }),
+    remove: (domain: string) =>
+      request(`/api/acl/admin/domains/${encodeURIComponent(domain)}`, { method: "DELETE" }),
+  },
+  test: (email: string, service: string, tool: string) =>
+    request<{ allowed: boolean; reason: string }>("/api/acl/admin/test", {
+      method: "POST", headers: jsonHeaders, body: JSON.stringify({ email, service, tool }),
+    }),
+};
+
 // ── User info from CF Access JWT cookie ──
 
 export function getUserEmailFromCookie(): string {
