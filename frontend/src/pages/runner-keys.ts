@@ -5,11 +5,17 @@ import { showModal, hideModal, modalCard } from "../components/modal";
 export async function renderRunnerKeys(root: HTMLElement) {
   root.innerHTML = "";
 
+  const page = h("div", { className: "p-6 max-w-[900px]" });
+  page.appendChild(h("h1", { className: "text-xl font-semibold mb-5" }, "Runner Keys"));
+
   let tokens: api.RunnerToken[] = [];
   try {
     tokens = await api.runnerTokens.list();
   } catch (e) {
-    root.appendChild(emptyState(`Failed to load: ${(e as Error).message}`));
+    const errCard = h("div", { className: "bg-danger-soft border border-danger/20 rounded-lg p-4 text-[12.5px] text-danger" },
+      `Runner unavailable: ${(e as Error).message}`);
+    page.appendChild(errCard);
+    root.appendChild(page);
     return;
   }
 
