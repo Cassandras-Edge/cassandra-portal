@@ -70,6 +70,18 @@ app.post("/api/tokens", async (c) => {
   });
 });
 
+app.post("/api/tokens/:id/rotate-key", async (c) => {
+  const id = c.req.param("id");
+  const resp = await fetchRunner(c, `/tenants/${id}/rotate-key`, {
+    method: "POST",
+    headers: { "X-API-Key": c.env.RUNNER_ADMIN_KEY },
+  });
+  if (!resp) return c.json({ error: "Runner unavailable" }, 502);
+  if (!resp.ok) return c.json({ error: `Failed to rotate key: ${resp.status}` }, 500);
+  const data = (await resp.json()) as { api_key: string };
+  return c.json({ api_key: data.api_key });
+});
+
 app.delete("/api/tokens/:id", async (c) => {
   const id = c.req.param("id");
   const resp = await fetchRunner(c, `/tenants/${id}`, {

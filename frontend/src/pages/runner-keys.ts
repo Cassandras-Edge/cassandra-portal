@@ -121,7 +121,23 @@ export async function renderRunnerDetail(root: HTMLElement) {
 
     const actionTd = document.createElement("td");
     actionTd.className = "px-4 py-3 text-right border-b border-edge";
-    actionTd.appendChild(
+    const actions = h("div", { className: "flex justify-end gap-2" });
+    actions.appendChild(
+      btn("Rotate Key", {
+        variant: "outline",
+        size: "sm",
+        onClick: async () => {
+          if (!confirm(`Rotate API key for "${t.name}"? The old key will stop working immediately.`)) return;
+          try {
+            const result = await api.runnerTokens.rotateKey(t.id);
+            showRotatedKeyModal(root, t.name, result.api_key);
+          } catch (e) {
+            alert((e as Error).message);
+          }
+        },
+      }),
+    );
+    actions.appendChild(
       btn("Delete", {
         variant: "danger",
         size: "sm",
@@ -132,6 +148,7 @@ export async function renderRunnerDetail(root: HTMLElement) {
         },
       }),
     );
+    actionTd.appendChild(actions);
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
   }
@@ -140,6 +157,27 @@ export async function renderRunnerDetail(root: HTMLElement) {
 
   container.appendChild(keysSection);
   root.appendChild(container);
+}
+
+function showRotatedKeyModal(root: HTMLElement, tenantName: string, newKey: string) {
+  const body = h("div", {});
+
+  const warn = h("div", { className: "bg-warn-soft border border-warn/12 rounded-md px-3 py-2.5 text-[11.5px] text-warn mb-4" });
+  warn.textContent = "Copy now \u2014 the new key won\u2019t be shown again. The old key is now invalid.";
+  body.appendChild(warn);
+
+  const keyBox = h("div", { className: "bg-surface-3 border border-edge rounded-md p-3 font-mono text-[11.5px] text-accent break-all leading-relaxed relative" });
+  keyBox.appendChild(h("span", { className: "font-sans text-[9.5px] text-text-3 uppercase tracking-wider block mb-1" }, "New API Key"));
+  keyBox.appendChild(h("span", {}, newKey));
+  const copyBtn = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(newKey, copyBtn) });
+  copyBtn.className += " absolute top-2.5 right-2.5";
+  keyBox.appendChild(copyBtn);
+  body.appendChild(keyBox);
+
+  const footer = h("div", { className: "flex justify-end mt-2" });
+  footer.appendChild(btn("Done", { onClick: () => { hideModal(); renderRunnerDetail(root); } }));
+
+  showModal(modalCard({ title: `Key Rotated — ${tenantName}`, body, footer }));
 }
 
 function showCreateRunnerModal(root: HTMLElement) {

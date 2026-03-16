@@ -162,6 +162,8 @@ export const runnerTokens = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     }),
+  rotateKey: (id: string) =>
+    request<{ api_key: string }>(`/api/tokens/${id}/rotate-key`, { method: "POST" }),
   delete: (id: string) => request("/api/tokens/" + id, { method: "DELETE" }),
 };
 
