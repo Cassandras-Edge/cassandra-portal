@@ -4,7 +4,7 @@ import { runnerProxy } from "./runner-proxy";
 import { mcpKeys } from "./mcp-keys";
 import { projects } from "./projects";
 import { credentials } from "./credentials";
-import { aclAdmin } from "./acl-admin";
+import { authAdmin } from "./auth-admin";
 import { runnerConfig } from "./runner-config";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -47,28 +47,28 @@ app.get("/api/acl/:service/tools", async (c) => {
 
   const tools = toolsParam.split(",");
 
-  if (!c.env.ACL_SECRET || (!c.env.ACL_SERVICE && !c.env.ACL_URL)) {
-    // No ACL configured — all tools allowed
+  if (!c.env.AUTH_SECRET || (!c.env.AUTH_SERVICE && !c.env.AUTH_URL)) {
+    // No auth service configured — all tools allowed
     return c.json(Object.fromEntries(tools.map((t) => [t, { allowed: true }])));
   }
 
-  // Use Service Binding (preferred) or fallback to ACL_URL
-  const aclFetch = (path: string, init: RequestInit) => {
-    if (c.env.ACL_SERVICE) {
-      return c.env.ACL_SERVICE.fetch(new Request(`https://acl-internal${path}`, init));
+  // Use Service Binding (preferred) or fallback to AUTH_URL
+  const authFetch = (path: string, init: RequestInit) => {
+    if (c.env.AUTH_SERVICE) {
+      return c.env.AUTH_SERVICE.fetch(new Request(`https://auth-internal${path}`, init));
     }
-    return fetch(`${c.env.ACL_URL}${path}`, init);
+    return fetch(`${c.env.AUTH_URL}${path}`, init);
   };
 
   const results: Record<string, { allowed: boolean; reason?: string }> = {};
   await Promise.all(
     tools.map(async (tool) => {
       try {
-        const resp = await aclFetch("/check", {
+        const resp = await authFetch("/check", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-ACL-Secret": c.env.ACL_SECRET!,
+            "X-Auth-Secret": c.env.AUTH_SECRET!,
           },
           body: JSON.stringify({ email, service, tool }),
         });
@@ -92,7 +92,7 @@ app.route("/", runnerProxy);
 app.route("/", mcpKeys);
 app.route("/", projects);
 app.route("/", credentials);
-app.route("/", aclAdmin);
+app.route("/", authAdmin);
 app.route("/", runnerConfig);
 
 // For non-API routes, static assets are served by Workers Static Assets (assets.directory in wrangler.jsonc).

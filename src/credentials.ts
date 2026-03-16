@@ -78,14 +78,14 @@ app.put("/api/projects/:projectId/services/:svc/credentials", async (c) => {
   // Sync to all KV keys for this project+service
   await syncCredentialsToKV(c.env.PORTAL_DB, c.env.MCP_KEYS, projectId, svc, sanitized);
 
-  // Sync to ACL service per-user credentials (if configured)
-  if (c.env.ACL_URL && c.env.ACL_SECRET) {
+  // Sync to Auth service per-user credentials (if configured)
+  if (c.env.AUTH_URL && c.env.AUTH_SECRET) {
     c.executionCtx.waitUntil(
-      fetch(`${c.env.ACL_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`, {
+      fetch(`${c.env.AUTH_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-ACL-Secret": c.env.ACL_SECRET,
+          "X-Auth-Secret": c.env.AUTH_SECRET,
         },
         body: JSON.stringify(sanitized),
       }).catch(() => {}),
@@ -117,12 +117,12 @@ app.delete("/api/projects/:projectId/services/:svc/credentials", async (c) => {
   // Remove credentials from all KV keys
   await syncCredentialsToKV(c.env.PORTAL_DB, c.env.MCP_KEYS, projectId, svc, null);
 
-  // Remove from ACL service per-user credentials (if configured)
-  if (c.env.ACL_URL && c.env.ACL_SECRET) {
+  // Remove from Auth service per-user credentials (if configured)
+  if (c.env.AUTH_URL && c.env.AUTH_SECRET) {
     c.executionCtx.waitUntil(
-      fetch(`${c.env.ACL_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`, {
+      fetch(`${c.env.AUTH_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`, {
         method: "DELETE",
-        headers: { "X-ACL-Secret": c.env.ACL_SECRET },
+        headers: { "X-Auth-Secret": c.env.AUTH_SECRET },
       }).catch(() => {}),
     );
   }

@@ -6,7 +6,7 @@ import { encrypt } from "./db";
 /**
  * Runner configuration — account-level auth token + per-vault E2EE passwords.
  *
- * ACL store layout:
+ * Auth store layout:
  *   cred:{email}:runner          → { OBSIDIAN_AUTH_TOKEN: "..." }
  *   cred:{email}:runner:{vault}  → { OBSIDIAN_E2EE_PASSWORD: "..." }
  *
@@ -16,7 +16,7 @@ import { encrypt } from "./db";
  * - Auth: CF Access (user email from header/JWT)
  * - At rest: AES-GCM encrypted in D1 (CREDENTIALS_KEY)
  * - API never returns plaintext — only metadata
- * - ACL sync uses X-ACL-Secret service-to-service auth
+ * - ACL sync uses X-Auth-Secret service-to-service auth
  */
 
 const OBSIDIAN_API = "https://api.obsidian.md";
@@ -38,19 +38,19 @@ interface ObsidianVaultListResponse {
 
 const app = new Hono<{ Bindings: Env }>();
 
-function aclSync(env: Env, email: string, service: string, body: Record<string, string> | null) {
-  if (!env.ACL_URL || !env.ACL_SECRET) return;
-  const url = `${env.ACL_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(service)}`;
+function authSync(env: Env, email: string, service: string, body: Record<string, string> | null) {
+  if (!env.AUTH_URL || !env.AUTH_SECRET) return;
+  const url = `${env.AUTH_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(service)}`;
   if (body) {
     return fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-ACL-Secret": env.ACL_SECRET },
+      headers: { "Content-Type": "application/json", "X-Auth-Secret": env.AUTH_SECRET },
       body: JSON.stringify(body),
     }).catch(() => {});
   }
   return fetch(url, {
     method: "DELETE",
-    headers: { "X-ACL-Secret": env.ACL_SECRET },
+    headers: { "X-Auth-Secret": env.AUTH_SECRET },
   }).catch(() => {});
 }
 
@@ -105,7 +105,7 @@ app.put("/api/runner/config/auth", async (c) => {
     .bind(email, encrypted, email)
     .run();
 
-  c.executionCtx.waitUntil(aclSync(c.env, email, "runner", { OBSIDIAN_AUTH_TOKEN: token.trim() }) ?? Promise.resolve());
+  c.executionCtx.waitUntil(authSync(c.env, email, "runner", { OBSIDIAN_AUTH_TOKEN: token.trim() }) ?? Promise.resolve());
 
   c.executionCtx.waitUntil(
     pushMetrics(c.env, [counter("mcp_key_operations_total", 1, { operation: "set_runner_auth", service: "runner" })]),
@@ -124,7 +124,7 @@ app.delete("/api/runner/config/auth", async (c) => {
     .bind(email)
     .run();
 
-  c.executionCtx.waitUntil(aclSync(c.env, email, "runner", null) ?? Promise.resolve());
+  c.executionCtx.waitUntil(authSync(c.env, email, "runner", null) ?? Promise.resolve());
 
   return c.json({ ok: true });
 });
@@ -200,7 +200,7 @@ app.put("/api/runner/config/vaults/:vault", async (c) => {
     .run();
 
   c.executionCtx.waitUntil(
-    aclSync(c.env, email, `runner:${vault}`, { OBSIDIAN_E2EE_PASSWORD: password.trim() }) ?? Promise.resolve(),
+    authSync(c.env, email, `runner:${vault}`, { OBSIDIAN_E2EE_PASSWORD: password.trim() }) ?? Promise.resolve(),
   );
 
   c.executionCtx.waitUntil(
@@ -222,7 +222,7 @@ app.delete("/api/runner/config/vaults/:vault", async (c) => {
     .bind(email, vault)
     .run();
 
-  c.executionCtx.waitUntil(aclSync(c.env, email, `runner:${vault}`, null) ?? Promise.resolve());
+  c.executionCtx.waitUntil(authSync(c.env, email, `runner:${vault}`, null) ?? Promise.resolve());
 
   return c.json({ ok: true });
 });
