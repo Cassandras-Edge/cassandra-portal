@@ -221,21 +221,16 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
 
   // Add vault form — dropdown populated from Obsidian API
   if (config.auth_token.configured) {
-    // Labels row
-    const labelRow = h("div", { className: "flex gap-2 mb-1.5" });
-    labelRow.appendChild(h("div", { className: "flex-1 text-[10.5px] font-medium text-text-3 uppercase tracking-wider" }, "Vault"));
-    labelRow.appendChild(h("div", { className: "flex-1 text-[10.5px] font-medium text-text-3 uppercase tracking-wider" }, "E2EE Password"));
-    labelRow.appendChild(h("div", { className: "w-[90px]" })); // spacer for button
-    vaultsBox.appendChild(labelRow);
+    const addForm = h("div", { className: "flex items-end gap-2" });
 
-    // Inputs row
-    const addForm = h("div", { className: "flex items-center gap-2" });
-
+    const vaultCol = h("div", { className: "flex-1 min-w-0" });
+    vaultCol.appendChild(h("div", { className: "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "Vault"));
     const vaultSelect = document.createElement("select");
     vaultSelect.className = "w-full bg-surface-0 border border-edge rounded-md px-3 py-2 text-[12px] text-text-1 outline-hidden focus:border-accent font-[family-name:var(--font-sans)]";
     vaultSelect.appendChild(h("option", { value: "" }, "Loading vaults..."));
     vaultSelect.disabled = true;
-    addForm.appendChild(h("div", { className: "flex-1" }, vaultSelect));
+    vaultCol.appendChild(vaultSelect);
+    addForm.appendChild(vaultCol);
 
     // Fetch vaults from Obsidian API
     const configuredVaultNames = new Set(config.vaults.map((v) => v.vault));
@@ -256,8 +251,11 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
       vaultSelect.appendChild(h("option", { value: "" }, "Failed to load vaults"));
     });
 
+    const passCol = h("div", { className: "flex-1 min-w-0" });
+    passCol.appendChild(h("div", { className: "text-[10.5px] font-medium text-text-3 uppercase tracking-wider mb-1.5" }, "E2EE Password"));
     const vaultPassInput = input({ placeholder: "E2EE password", type: "password" });
-    addForm.appendChild(h("div", { className: "flex-1" }, vaultPassInput));
+    passCol.appendChild(vaultPassInput);
+    addForm.appendChild(passCol);
     addForm.appendChild(
       btn("Add Vault", {
         onClick: async () => {
