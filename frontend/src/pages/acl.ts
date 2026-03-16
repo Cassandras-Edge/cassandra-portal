@@ -273,7 +273,9 @@ function buildGroupForm(root: HTMLElement, existingName?: string, existing?: api
     const existingSvc = existing?.services[svc.id];
     const isEnabled = existingSvc?.access === "allow";
     const deniedTools = existingSvc?.tools?.deny || [];
-    const toolNames = (svc.tools || []).map(t => t.split(" \u2014 ")[0].trim());
+    const registryTools = (svc.tools || []).map(t => t.split(" \u2014 ")[0].trim());
+    // Merge denied tools that aren't in the registry (e.g. hidden/internal tools)
+    const toolNames = [...registryTools, ...deniedTools.filter(t => !registryTools.includes(t))];
 
     const block = h("div", { className: "bg-surface-3 border border-edge rounded-md p-3 mb-2" });
 
