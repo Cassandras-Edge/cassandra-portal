@@ -259,7 +259,10 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
     vaultPassInput.className += ` ${inputH}`;
     passCol.appendChild(vaultPassInput);
     addForm.appendChild(passCol);
-    addForm.appendChild(
+    const btnCol = h("div", { className: "shrink-0" });
+    // Invisible spacer matching label height above inputs
+    btnCol.appendChild(h("div", { className: "text-[10.5px] uppercase tracking-wider mb-1.5 invisible" }, "\u00A0"));
+    btnCol.appendChild(
       btn("Add Vault", {
         onClick: async () => {
           const name = vaultSelect.value;
@@ -272,6 +275,7 @@ async function renderRunnerConfig(container: HTMLElement, root: HTMLElement) {
         },
       }),
     );
+    addForm.appendChild(btnCol);
     vaultsBox.appendChild(addForm);
   } else {
     vaultsBox.appendChild(h("div", { className: "text-[11px] text-text-3 italic" }, "Set the auth token above to see available vaults."));
