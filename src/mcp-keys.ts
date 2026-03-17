@@ -71,6 +71,34 @@ export const MCP_SERVICES: McpService[] = [
       { key: "pushover_api_token", label: "Pushover API Token", required: true },
     ],
   },
+  {
+    id: "discord-mcp",
+    name: "discord-mcp",
+    description: "Discord (via Beeper Bridge)",
+    status: "active",
+    category: "data",
+    tools: [
+      "list_guilds — List Discord servers with enable/disable status",
+      "enable_guild — Enable a guild for MCP access",
+      "disable_guild — Disable a guild from MCP access",
+      "list_channels — List channels in an enabled guild",
+      "list_dms — List DM conversations",
+      "read_messages — Read messages with pagination",
+      "search_messages — Search message history",
+      "get_channel_info — Channel metadata",
+      "get_guild_info — Guild metadata",
+      "bridge_status — Check bridge connection health",
+    ],
+    credentialsSchema: [
+      {
+        key: "discord_token",
+        label: "Discord Token",
+        required: true,
+        type: "textarea",
+        hint: "Your Discord user token or bot token. The bridge uses this to connect to Discord and sync messages.",
+      },
+    ],
+  },
 ];
 
 const app = new Hono<{ Bindings: Env }>();
