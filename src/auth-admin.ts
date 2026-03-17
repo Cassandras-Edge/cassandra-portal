@@ -54,9 +54,11 @@ async function proxyToAuth(
   return Response.json(data, { status: resp.status });
 }
 
-// ── Whoami (no admin required on auth worker side) ──
+// ── Whoami + auto-register (no admin required on auth worker side) ──
 
 app.get("/api/acl/admin/whoami", async (c) => {
+  // Auto-register user on every whoami call (idempotent — no-op if already exists)
+  await proxyToAuth(c, "POST", "/acl/register");
   return proxyToAuth(c, "GET", "/acl/whoami");
 });
 
