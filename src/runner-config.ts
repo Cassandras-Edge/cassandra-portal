@@ -39,19 +39,21 @@ interface ObsidianVaultListResponse {
 const app = new Hono<{ Bindings: Env }>();
 
 function authSync(env: Env, email: string, service: string, body: Record<string, string> | null) {
-  if (!env.AUTH_URL || !env.AUTH_SECRET) return;
-  const url = `${env.AUTH_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(service)}`;
+  if (!env.AUTH_SECRET || (!env.AUTH_SERVICE && !env.AUTH_URL)) return;
+  const path = `/credentials/${encodeURIComponent(email)}/${encodeURIComponent(service)}`;
+  const headers: Record<string, string> = { "X-Auth-Secret": env.AUTH_SECRET };
   if (body) {
-    return fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Auth-Secret": env.AUTH_SECRET },
-      body: JSON.stringify(body),
-    }).catch(() => {});
+    headers["Content-Type"] = "application/json";
   }
-  return fetch(url, {
-    method: "DELETE",
-    headers: { "X-Auth-Secret": env.AUTH_SECRET },
-  }).catch(() => {});
+  const init: RequestInit = {
+    method: body ? "POST" : "DELETE",
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  };
+  if (env.AUTH_SERVICE) {
+    return env.AUTH_SERVICE.fetch(new Request(`https://auth-internal${path}`, init)).catch(() => {});
+  }
+  return fetch(`${env.AUTH_URL}${path}`, init).catch(() => {});
 }
 
 // ── Account-level auth token ──

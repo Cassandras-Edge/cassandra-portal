@@ -78,17 +78,19 @@ app.put("/api/projects/:projectId/services/:svc/credentials", async (c) => {
   // Sync to all KV keys for this project+service
   await syncCredentialsToKV(c.env.PORTAL_DB, c.env.MCP_KEYS, projectId, svc, sanitized);
 
-  // Sync to Auth service per-user credentials (if configured)
-  if (c.env.AUTH_URL && c.env.AUTH_SECRET) {
+  // Sync to Auth service per-user credentials
+  if (c.env.AUTH_SECRET && (c.env.AUTH_SERVICE || c.env.AUTH_URL)) {
+    const credPath = `/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`;
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Auth-Secret": c.env.AUTH_SECRET },
+      body: JSON.stringify(sanitized),
+    };
     c.executionCtx.waitUntil(
-      fetch(`${c.env.AUTH_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Secret": c.env.AUTH_SECRET,
-        },
-        body: JSON.stringify(sanitized),
-      }).catch(() => {}),
+      (c.env.AUTH_SERVICE
+        ? c.env.AUTH_SERVICE.fetch(new Request(`https://auth-internal${credPath}`, init))
+        : fetch(`${c.env.AUTH_URL}${credPath}`, init)
+      ).catch(() => {}),
     );
   }
 
@@ -117,13 +119,18 @@ app.delete("/api/projects/:projectId/services/:svc/credentials", async (c) => {
   // Remove credentials from all KV keys
   await syncCredentialsToKV(c.env.PORTAL_DB, c.env.MCP_KEYS, projectId, svc, null);
 
-  // Remove from Auth service per-user credentials (if configured)
-  if (c.env.AUTH_URL && c.env.AUTH_SECRET) {
+  // Remove from Auth service per-user credentials
+  if (c.env.AUTH_SECRET && (c.env.AUTH_SERVICE || c.env.AUTH_URL)) {
+    const credPath = `/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`;
+    const init: RequestInit = {
+      method: "DELETE",
+      headers: { "X-Auth-Secret": c.env.AUTH_SECRET },
+    };
     c.executionCtx.waitUntil(
-      fetch(`${c.env.AUTH_URL}/credentials/${encodeURIComponent(email)}/${encodeURIComponent(svc)}`, {
-        method: "DELETE",
-        headers: { "X-Auth-Secret": c.env.AUTH_SECRET },
-      }).catch(() => {}),
+      (c.env.AUTH_SERVICE
+        ? c.env.AUTH_SERVICE.fetch(new Request(`https://auth-internal${credPath}`, init))
+        : fetch(`${c.env.AUTH_URL}${credPath}`, init)
+      ).catch(() => {}),
     );
   }
 
