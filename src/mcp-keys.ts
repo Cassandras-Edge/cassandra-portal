@@ -52,7 +52,7 @@ export const MCP_SERVICES: McpService[] = [
         label: "YouTube Cookies (base64)",
         required: false,
         type: "textarea",
-        hint: "Run: yt-dlp --cookies-from-browser firefox --cookies - | base64\n(use chrome instead of firefox on Windows)",
+        hint: "Run: yt-dlp --cookies-from-browser firefox --cookies /tmp/yt-cookies.txt 2>/dev/null && base64 < /tmp/yt-cookies.txt\n(use chrome instead of firefox on Windows)",
       },
     ],
   },
