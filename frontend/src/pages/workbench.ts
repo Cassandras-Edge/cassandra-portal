@@ -559,7 +559,7 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
     const step1 = h("div", { className: "mb-3" });
     step1.appendChild(h("p", { className: "text-xs text-text-3 mb-2" },
       "Step 1: Copy this command and paste it in your terminal to export cookies."));
-    const exportCmd = "yt-dlp --cookies-from-browser firefox --cookies ~/yt-cookies.txt >/dev/null 2>&1; grep -iE '(youtube|google|googlevideo)\\.com' ~/yt-cookies.txt > ~/yt-cookies-filtered.txt && mv ~/yt-cookies-filtered.txt ~/yt-cookies.txt && echo 'Saved to ~/yt-cookies.txt'";
+    const exportCmd = "yt-dlp --cookies-from-browser firefox --cookies ~/yt-cookies-full.txt >/dev/null 2>&1; { head -3 ~/yt-cookies-full.txt; grep -iE '(youtube|google|googlevideo)\\.com' ~/yt-cookies-full.txt; } > ~/yt-cookies.txt && rm ~/yt-cookies-full.txt && echo 'Saved to ~/yt-cookies.txt'";
     const copyBtn = btn("Copy Export Command", {
       size: "sm",
       onClick: () => copyToClipboard(exportCmd, copyBtn),
