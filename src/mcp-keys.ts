@@ -96,7 +96,7 @@ export const MCP_SERVICES: McpService[] = [
         label: "Discord Token",
         required: true,
         type: "textarea",
-        hint: "Bot token from Discord Developer Portal:\n1. Go to https://discord.com/developers/applications\n2. Click \"New Application\" → name it → Create\n3. Go to Bot → click \"Reset Token\" → copy it\n4. Enable MESSAGE CONTENT INTENT under Bot → Privileged Intents\n5. Go to OAuth2 → URL Generator → select \"bot\" scope\n6. Select permissions: Read Messages/View Channels, Read Message History\n7. Open the generated URL to add the bot to your servers",
+        hint: "Your Discord user token (the bridge logs in as you to see DMs + guilds).\nTo extract from browser:\n1. Open https://discord.com/app in Chrome/Firefox\n2. Open DevTools (F12) → Network tab\n3. Filter by \"api\" and click any request to discord.com\n4. Find the \"Authorization\" header → copy the token value\n\nOr via the Discord desktop app console:\n1. Ctrl+Shift+I → Console tab\n2. Run: (webpackChunkdiscord_app.push([[''],{},e=>{m=[];for(let c in e.c)m.push(e.c[c])}]),m).find(m=>m?.exports?.default?.getToken!==void 0).exports.default.getToken()",
       },
     ],
   },
