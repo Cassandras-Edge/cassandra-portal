@@ -550,44 +550,94 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
     ));
   }
 
-  // Cookie upload shortcut for yt-mcp
+  // Cookie import shortcut for yt-mcp
   if (service.id === "yt-mcp") {
     const uploadSection = h("div", { className: "bg-surface-2 border border-edge rounded-lg p-5 mb-4" });
     const uploadTitle = h("div", { className: "text-sm font-medium text-text-0 mb-2" }, "Import Cookies from Browser");
-    const uploadDesc = h("p", { className: "text-xs text-text-3 mb-3" },
-      "Generate a one-time command that exports cookies from your browser and uploads them directly. Token expires in 10 minutes.");
 
-    const uploadBtn = btn("Copy Upload Command", {
-      onClick: async () => {
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = "Generating...";
-        try {
-          const resp = await api.cookieUpload.generateToken(project.id, service.id);
-          await copyToClipboard(resp.command, uploadBtn);
-          uploadBtn.textContent = "Copied! Paste in terminal";
-          uploadBtn.classList.add("text-ok");
-          setTimeout(() => {
-            uploadBtn.textContent = "Copy Upload Command";
-            uploadBtn.classList.remove("text-ok");
-            uploadBtn.disabled = false;
-          }, 5000);
-        } catch (e) {
-          uploadBtn.textContent = (e as Error).message;
-          uploadBtn.disabled = false;
-          setTimeout(() => { uploadBtn.textContent = "Copy Upload Command"; }, 3000);
-        }
-      },
+    // Step 1: copy export command
+    const step1 = h("div", { className: "mb-3" });
+    step1.appendChild(h("p", { className: "text-xs text-text-3 mb-2" },
+      "Step 1: Copy this command and paste it in your terminal to export cookies."));
+    const exportCmd = "yt-dlp --cookies-from-browser firefox --cookies ~/yt-cookies.txt 2>/dev/null && echo 'Saved to ~/yt-cookies.txt'";
+    const copyBtn = btn("Copy Export Command", {
+      size: "sm",
+      onClick: () => copyToClipboard(exportCmd, copyBtn),
+    });
+    step1.appendChild(copyBtn);
+
+    // Step 2: upload the file
+    const step2 = h("div", {});
+    step2.appendChild(h("p", { className: "text-xs text-text-3 mb-2" },
+      "Step 2: Upload the exported cookie file."));
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".txt";
+    fileInput.className = "hidden";
+
+    const uploadStatus = h("span", { className: "text-xs text-text-3 ml-2" });
+    const uploadBtn = btn("Upload Cookie File", {
+      size: "sm",
+      variant: "outline",
+      onClick: () => fileInput.click(),
     });
 
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = "Uploading...";
+      uploadStatus.textContent = "";
+
+      try {
+        const text = await file.text();
+
+        // Validate it looks like a Netscape cookie file
+        if (!text.includes(".youtube.com") && !text.includes("# Netscape HTTP Cookie File") && !text.includes("# HTTP Cookie File")) {
+          throw new Error("File does not look like a Netscape cookie file. Make sure you exported with yt-dlp.");
+        }
+
+        const b64 = btoa(text);
+        await api.credentials.set(project.id, service.id, { youtube_cookies: b64 });
+
+        uploadStatus.textContent = "Cookies saved!";
+        uploadStatus.className = "text-xs text-ok ml-2";
+
+        // Re-render after a beat
+        setTimeout(() => {
+          const root = container.closest("#main-content")! as HTMLElement;
+          import("../main").then(({ getState }) => {
+            const { currentProject, currentService } = getState();
+            if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
+          });
+        }, 1500);
+      } catch (e) {
+        uploadStatus.textContent = (e as Error).message;
+        uploadStatus.className = "text-xs text-danger ml-2";
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Upload Cookie File";
+        fileInput.value = "";
+      }
+    });
+
+    const step2Actions = h("div", { className: "flex items-center" });
+    step2Actions.appendChild(uploadBtn);
+    step2Actions.appendChild(uploadStatus);
+    step2Actions.appendChild(fileInput);
+    step2.appendChild(step2Actions);
+
     uploadSection.appendChild(uploadTitle);
-    uploadSection.appendChild(uploadDesc);
-    uploadSection.appendChild(uploadBtn);
+    uploadSection.appendChild(step1);
+    uploadSection.appendChild(step2);
     container.appendChild(uploadSection);
 
     // Divider
     container.appendChild(h("div", { className: "flex items-center gap-3 mb-4" },
       h("div", { className: "flex-1 border-t border-edge" }),
-      h("span", { className: "text-[10px] text-text-3 uppercase tracking-wider" }, "or paste manually"),
+      h("span", { className: "text-[10px] text-text-3 uppercase tracking-wider" }, "or paste base64 manually"),
       h("div", { className: "flex-1 border-t border-edge" }),
     ));
   }
