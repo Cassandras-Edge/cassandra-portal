@@ -372,65 +372,59 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
           qrDisplay.appendChild(h("p", { className: "text-xs text-text-2 mt-2" },
             "Open Discord on your phone \u2192 scan this QR code"));
 
-          // Poll for login completion
-          let polling = true;
-          const pollInterval = setInterval(async () => {
-            if (!polling) return;
-            try {
-              const statusResp = await fetch(`/api/discord-mcp/login/status/${session_id}?project_id=${project.id}`);
-              const status = await statusResp.json() as { state: string; username?: string; error?: string; token?: string };
+          // Poll for login completion (proper async loop, not setInterval)
+          const pollLogin = async () => {
+            const deadline = Date.now() + 180_000; // 3 minute timeout
+            while (Date.now() < deadline) {
+              await new Promise(r => setTimeout(r, 2000));
+              try {
+                const statusResp = await fetch(`/api/discord-mcp/login/status/${session_id}?project_id=${project.id}`);
+                const status = await statusResp.json() as { state: string; username?: string; error?: string; token?: string };
 
-              if (status.state === "user_pending") {
-                qrDisplay.innerHTML = "";
-                qrDisplay.appendChild(h("div", { className: "text-center" },
-                  h("p", { className: "text-sm text-text-0 font-medium" }, status.username || ""),
-                  h("p", { className: "text-xs text-text-3" }, "Approve the login on your phone..."),
-                ));
-              } else if (status.state === "complete") {
-                polling = false;
-                clearInterval(pollInterval);
-                // Save token via portal credential API
-                if (status.token) {
-                  try {
-                    await api.credentials.set(project.id, service.id, { discord_token: status.token });
-                  } catch (e) { console.error("Failed to save credential:", e); }
+                if (status.state === "user_pending") {
+                  qrDisplay.innerHTML = "";
+                  qrDisplay.appendChild(h("div", { className: "text-center" },
+                    h("p", { className: "text-sm text-text-0 font-medium" }, status.username || ""),
+                    h("p", { className: "text-xs text-text-3" }, "Approve the login on your phone..."),
+                  ));
+                } else if (status.state === "complete") {
+                  // Save token first, then update UI
+                  if (status.token) {
+                    try {
+                      await api.credentials.set(project.id, service.id, { discord_token: status.token });
+                    } catch (e) { console.error("Failed to save credential:", e); }
+                  }
+                  qrDisplay.innerHTML = "";
+                  qrDisplay.appendChild(h("div", { className: "text-center" },
+                    pill("Connected", "ok"),
+                    h("p", { className: "text-xs text-text-2 mt-2" }, "Discord connected! Bridge will start syncing automatically."),
+                  ));
+                  connectBtn.disabled = false;
+                  connectBtn.textContent = "Connect Discord";
+                  setTimeout(() => {
+                    const root = container.closest("#main-content")! as HTMLElement;
+                    import("../main").then(({ getState }) => {
+                      const { currentProject, currentService } = getState();
+                      if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
+                    });
+                  }, 2000);
+                  return;
+                } else if (status.state === "error" || status.state === "timeout") {
+                  qrDisplay.innerHTML = "";
+                  qrDisplay.appendChild(h("p", { className: "text-xs text-red-400" }, status.error || "Login failed. Try again."));
+                  connectBtn.disabled = false;
+                  connectBtn.textContent = "Connect Discord";
+                  return;
                 }
-                qrDisplay.innerHTML = "";
-                qrDisplay.appendChild(h("div", { className: "text-center" },
-                  pill("Connected", "ok"),
-                  h("p", { className: "text-xs text-text-2 mt-2" }, "Discord connected! Bridge will start syncing automatically."),
-                ));
-                connectBtn.disabled = false;
-                connectBtn.textContent = "Connect Discord";
-                setTimeout(() => {
-                  const root = container.closest("#main-content")! as HTMLElement;
-                  import("../main").then(({ getState }) => {
-                    const { currentProject, currentService } = getState();
-                    if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
-                  });
-                }, 2000);
-              } else if (status.state === "error" || status.state === "timeout") {
-                polling = false;
-                clearInterval(pollInterval);
-                qrDisplay.innerHTML = "";
-                qrDisplay.appendChild(h("p", { className: "text-xs text-red-400" }, status.error || "Login failed. Try again."));
-                connectBtn.disabled = false;
-                connectBtn.textContent = "Connect Discord";
-              }
-            } catch { /* continue polling */ }
-          }, 2000);
-
-          // Stop polling after 3 minutes
-          setTimeout(() => {
-            if (polling) {
-              polling = false;
-              clearInterval(pollInterval);
-              qrDisplay.innerHTML = "";
-              qrDisplay.appendChild(h("p", { className: "text-xs text-red-400" }, "QR code expired. Try again."));
-              connectBtn.disabled = false;
-              connectBtn.textContent = "Connect Discord";
+              } catch { /* continue polling */ }
             }
-          }, 180000);
+            // Timeout
+            qrDisplay.innerHTML = "";
+            qrDisplay.appendChild(h("p", { className: "text-xs text-red-400" }, "QR code expired. Try again."));
+            connectBtn.disabled = false;
+            connectBtn.textContent = "Connect Discord";
+          };
+          pollLogin();
         } catch (e) {
           qrStatus.textContent = (e as Error).message;
           connectBtn.disabled = false;
