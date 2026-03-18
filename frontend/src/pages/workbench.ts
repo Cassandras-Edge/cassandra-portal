@@ -320,9 +320,15 @@ async function renderGuildsTab(container: HTMLElement, root: HTMLElement, projec
     wrapper.appendChild(h("p", { className: "text-xs text-text-2 mb-4" },
       "Enable guilds to make their channels accessible via MCP tools. DMs are always accessible."));
 
-    const list = h("div", { className: "flex flex-col gap-1" });
+    const searchInput = input({ placeholder: "Filter guilds..." });
+    searchInput.classList.add("mb-3");
+    wrapper.appendChild(searchInput);
 
-    for (const guild of data.guilds.sort((a, b) => a.name.localeCompare(b.name))) {
+    const list = h("div", { className: "flex flex-col gap-1" });
+    const sortedGuilds = data.guilds.sort((a, b) => a.name.localeCompare(b.name));
+    const rows: { el: HTMLElement; name: string; id: string }[] = [];
+
+    for (const guild of sortedGuilds) {
       const row = h("div", { className: "flex items-center justify-between px-4 py-3 rounded-lg hover:bg-surface-2 transition-colors" });
 
       const info = h("div", { className: "flex items-center gap-3" });
@@ -376,7 +382,15 @@ async function renderGuildsTab(container: HTMLElement, root: HTMLElement, projec
       });
       row.appendChild(toggle);
       list.appendChild(row);
+      rows.push({ el: row, name: guild.name.toLowerCase(), id: guild.guild_id });
     }
+
+    searchInput.addEventListener("input", () => {
+      const q = (searchInput as HTMLInputElement).value.toLowerCase().trim();
+      for (const r of rows) {
+        r.el.style.display = (!q || r.name.includes(q) || r.id.includes(q)) ? "" : "none";
+      }
+    });
 
     wrapper.appendChild(list);
   } catch (err) {
