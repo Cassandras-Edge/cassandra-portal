@@ -79,14 +79,8 @@ export const MCP_SERVICES: McpService[] = [
     status: "active",
     category: "data",
     tools: [
-      "list_guilds — List Discord servers with enable/disable status",
-      "list_channels — List channels in an enabled guild",
-      "list_dms — List DM conversations",
-      "read_messages — Read messages with pagination",
-      "search_messages — Search message history",
-      "get_channel_info — Channel metadata",
-      "get_guild_info — Guild metadata",
-      "bridge_status — Check bridge connection health",
+      "discord_search — Search messages across all enabled servers and DMs",
+      "discord_read — Read channel, thread, or DM messages with pagination",
     ],
     credentialsSchema: [
       {
