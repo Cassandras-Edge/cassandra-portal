@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import * as api from "../api";
 import { h, btn, input, textarea, field, pill, mono, emptyState, fmtDate, maskKey, copyToClipboard } from "../components/ui";
 import { showModal, hideModal, modalCard } from "../components/modal";
@@ -362,14 +363,12 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
           }
           const { session_id, qr_url } = await startResp.json() as { session_id: string; qr_url: string };
 
-          // Display QR code
+          // Display QR code (rendered client-side)
           qrDisplay.innerHTML = "";
-          const qrImg = h("img", {
-            src: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qr_url)}`,
-            className: "w-48 h-48 rounded-lg bg-white p-2",
-            alt: "Discord QR Code",
-          }) as HTMLImageElement;
-          qrDisplay.appendChild(qrImg);
+          const qrCanvas = document.createElement("canvas");
+          qrCanvas.className = "w-48 h-48 rounded-lg";
+          await QRCode.toCanvas(qrCanvas, qr_url, { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } });
+          qrDisplay.appendChild(qrCanvas);
           qrDisplay.appendChild(h("p", { className: "text-xs text-text-2 mt-2" },
             "Open Discord on your phone \u2192 scan this QR code"));
 
