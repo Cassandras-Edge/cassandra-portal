@@ -325,7 +325,10 @@ async function renderGuildsTab(container: HTMLElement, root: HTMLElement, projec
     wrapper.appendChild(searchInput);
 
     const list = h("div", { className: "flex flex-col gap-1" });
-    const sortedGuilds = data.guilds.sort((a, b) => a.name.localeCompare(b.name));
+    const sortedGuilds = data.guilds.sort((a, b) => {
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
     const rows: { el: HTMLElement; name: string; id: string }[] = [];
 
     for (const guild of sortedGuilds) {
