@@ -297,4 +297,69 @@ app.post("/api/projects/:projectId/services/:svc/keys/:key/rotate", async (c) =>
   return c.json({ key: newKey, name: keyRow.name });
 });
 
+// ── Service-Level Credentials (global, admin-managed) ──
+
+async function authFetch(env: Env, path: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  headers.set("X-Auth-Secret", env.AUTH_SECRET);
+  if (env.AUTH_SERVICE) {
+    return env.AUTH_SERVICE.fetch(new Request(`https://auth-internal${path}`, { ...init, headers }));
+  }
+  return fetch(`${env.AUTH_URL}${path}`, { ...init, headers });
+}
+
+app.get("/api/service-credentials/:svc", async (c) => {
+  const email = getUserEmail(c.req.raw);
+  if (!email) return c.json({ error: "authenticated user email is required" }, 401);
+
+  const svc = c.req.param("svc");
+  const resp = await authFetch(c.env, `/service-credentials/${encodeURIComponent(svc)}`);
+  return c.json(await resp.json());
+});
+
+app.put("/api/service-credentials/:svc", async (c) => {
+  const email = getUserEmail(c.req.raw);
+  if (!email) return c.json({ error: "authenticated user email is required" }, 401);
+
+  const svc = c.req.param("svc");
+  const service = MCP_SERVICES.find((s) => s.id === svc);
+  if (!service?.serviceCredentialsSchema) return c.json({ error: "service has no service credentials schema" }, 400);
+
+  const body = await c.req.json<Record<string, string>>();
+
+  // Only store schema-defined fields
+  const sanitized: Record<string, string> = {};
+  for (const field of service.serviceCredentialsSchema) {
+    if (body[field.key]) {
+      sanitized[field.key] = body[field.key];
+    }
+  }
+
+  const resp = await authFetch(c.env, `/service-credentials/${encodeURIComponent(svc)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(sanitized),
+  });
+
+  c.executionCtx.waitUntil(
+    pushMetrics(c.env, [
+      counter("mcp_key_operations_total", 1, { operation: "set_service_credentials", service: svc }),
+    ]),
+  );
+
+  return c.json(await resp.json());
+});
+
+app.delete("/api/service-credentials/:svc", async (c) => {
+  const email = getUserEmail(c.req.raw);
+  if (!email) return c.json({ error: "authenticated user email is required" }, 401);
+
+  const svc = c.req.param("svc");
+  const resp = await authFetch(c.env, `/service-credentials/${encodeURIComponent(svc)}`, {
+    method: "DELETE",
+  });
+
+  return c.json(await resp.json());
+});
+
 export { app as credentials };

@@ -2,7 +2,7 @@ import * as api from "../api";
 import { h, btn, input, textarea, field, pill, mono, emptyState, fmtDate, maskKey, copyToClipboard } from "../components/ui";
 import { showModal, hideModal, modalCard } from "../components/modal";
 
-let currentTab: "tools" | "api-keys" | "configuration" = "tools";
+let currentTab: "tools" | "api-keys" | "configuration" | "service-settings" = "tools";
 let toolAccess: api.ToolAccess | null = null;
 
 export async function renderServiceDetail(root: HTMLElement, project: api.Project, service: api.McpService) {
@@ -115,6 +115,9 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
     { id: "tools", label: "Tools" },
     { id: "api-keys", label: "API Keys" },
     { id: "configuration", label: "Configuration" },
+    ...(service.serviceCredentialsSchema && service.serviceCredentialsSchema.length > 0
+      ? [{ id: "service-settings" as const, label: "Service Settings" }]
+      : []),
   ];
   for (const tab of tabDefs) {
     const tabBtn = h("button", {
@@ -137,6 +140,8 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
     await renderToolsTab(container, service);
   } else if (currentTab === "api-keys") {
     await renderKeysTab(container, project, service);
+  } else if (currentTab === "service-settings") {
+    await renderServiceSettingsTab(container, service);
   } else {
     await renderConfigTab(container, project, service);
   }
@@ -367,6 +372,83 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
         await api.credentials.remove(project.id, service.id);
         const root = container.closest("#main-content")! as HTMLElement;
         renderServiceDetail(root, project, service);
+      },
+    }));
+  }
+
+  form.appendChild(actions);
+  container.appendChild(form);
+}
+
+async function renderServiceSettingsTab(container: HTMLElement, service: api.McpService) {
+  if (!service.serviceCredentialsSchema || service.serviceCredentialsSchema.length === 0) {
+    container.appendChild(emptyState(`${service.name} does not have service-level settings.`));
+    return;
+  }
+
+  let existing: Record<string, string> | null = null;
+  try {
+    const resp = await api.serviceCredentials.get(service.id);
+    existing = resp.credentials;
+  } catch { /* no credentials yet */ }
+
+  if (existing) {
+    container.appendChild(h("div", { className: "flex items-center gap-2 mb-4" },
+      pill("Configured", "ok"),
+    ));
+  }
+
+  container.appendChild(h("div", { className: "text-xs text-text-2 mb-4" },
+    "Service-level API keys shared across all users. These are deployment credentials, not per-user settings.",
+  ));
+
+  const form = h("div", { className: "bg-surface-2 border border-edge rounded-lg p-5" });
+  const inputs: { key: string; input: HTMLInputElement }[] = [];
+
+  for (const f of service.serviceCredentialsSchema) {
+    const inp = input({
+      placeholder: existing ? "\u2022\u2022\u2022\u2022\u2022\u2022 (leave blank to keep current)" : f.label,
+      type: "password",
+    });
+    inputs.push({ key: f.key, input: inp });
+    const label = f.label + (f.required ? "" : " (optional)");
+    form.appendChild(field(label, inp, f.hint));
+  }
+
+  const actions = h("div", { className: "flex items-center gap-2 pt-1" });
+
+  actions.appendChild(btn("Save", {
+    onClick: async () => {
+      const creds: Record<string, string> = {};
+      for (const { key, input: inp } of inputs) {
+        const val = inp.value.trim();
+        if (val) creds[key] = val;
+      }
+      if (Object.keys(creds).length === 0 && !existing) return;
+      try {
+        await api.serviceCredentials.set(service.id, creds);
+        const root = container.closest("#main-content")! as HTMLElement;
+        import("../main").then(({ getState }) => {
+          const { currentProject, currentService } = getState();
+          if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
+        });
+      } catch (e) {
+        alert((e as Error).message);
+      }
+    },
+  }));
+
+  if (existing) {
+    actions.appendChild(btn("Remove", {
+      variant: "danger",
+      onClick: async () => {
+        if (!confirm("Remove service credentials? The service will fall back to environment variables.")) return;
+        await api.serviceCredentials.remove(service.id);
+        const root = container.closest("#main-content")! as HTMLElement;
+        import("../main").then(({ getState }) => {
+          const { currentProject, currentService } = getState();
+          if (currentProject && currentService) renderServiceDetail(root, currentProject, currentService);
+        });
       },
     }));
   }

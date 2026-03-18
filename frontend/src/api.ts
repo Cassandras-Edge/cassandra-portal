@@ -76,6 +76,14 @@ export const members = {
 
 // ── Services ──
 
+export interface CredentialFieldDef {
+  key: string;
+  label: string;
+  required: boolean;
+  type?: "text" | "textarea";
+  hint?: string;
+}
+
 export interface McpService {
   id: string;
   name: string;
@@ -83,7 +91,8 @@ export interface McpService {
   status: "active" | "planned";
   category: "media" | "notifications" | "data" | "tools";
   tools?: string[];
-  credentialsSchema?: { key: string; label: string; required: boolean; type?: "text" | "textarea"; hint?: string }[];
+  credentialsSchema?: CredentialFieldDef[];
+  serviceCredentialsSchema?: CredentialFieldDef[];
 }
 
 export const services = {
@@ -109,6 +118,21 @@ export const credentials = {
     }),
   remove: (projectId: string, serviceId: string) =>
     request(`/api/projects/${projectId}/services/${serviceId}/credentials`, { method: "DELETE" }),
+};
+
+// ── Service-Level Credentials (global) ──
+
+export const serviceCredentials = {
+  get: (serviceId: string) =>
+    request<{ credentials: Record<string, string> | null }>(`/api/service-credentials/${serviceId}`),
+  set: (serviceId: string, creds: Record<string, string>) =>
+    request(`/api/service-credentials/${serviceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(creds),
+    }),
+  remove: (serviceId: string) =>
+    request(`/api/service-credentials/${serviceId}`, { method: "DELETE" }),
 };
 
 // ── Keys ──

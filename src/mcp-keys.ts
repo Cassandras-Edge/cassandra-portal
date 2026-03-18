@@ -28,6 +28,7 @@ export interface McpService {
   category: "media" | "notifications" | "data" | "tools";
   tools?: string[];
   credentialsSchema?: CredentialField[];
+  serviceCredentialsSchema?: CredentialField[];
 }
 
 // Registry of available MCP services (add new services here)
@@ -146,6 +147,11 @@ export const MCP_SERVICES: McpService[] = [
       "industry_performance — Industry-level performance",
       "index_constituents — S&P 500, Nasdaq, Dow components",
       "market_overview — Indices, sectors, and movers",
+    ],
+    serviceCredentialsSchema: [
+      { key: "FMP_API_KEY", label: "FMP API Key", required: true },
+      { key: "POLYGON_API_KEY", label: "Polygon API Key", required: false },
+      { key: "FRED_API_KEY", label: "FRED API Key", required: false },
     ],
   },
 ];
