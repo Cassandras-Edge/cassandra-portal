@@ -93,6 +93,7 @@ export interface McpService {
   tools?: string[];
   credentialsSchema?: CredentialFieldDef[];
   serviceCredentialsSchema?: CredentialFieldDef[];
+  subdomain?: string;
 }
 
 export const services = {

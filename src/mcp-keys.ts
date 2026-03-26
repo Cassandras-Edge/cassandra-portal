@@ -18,23 +18,31 @@ export interface McpService {
   tools?: string[];
   credentialsSchema?: CredentialField[];
   serviceCredentialsSchema?: CredentialField[];
+  /** Override the subdomain used for the MCP endpoint URL (defaults to id). */
+  subdomain?: string;
 }
 
 // Registry of available MCP services
 export const MCP_SERVICES: McpService[] = [
   {
     id: "yt-mcp",
-    name: "yt-mcp",
+    name: "Media MCP",
     description: "Video & Audio Transcription",
     status: "active",
     category: "media",
+    subdomain: "media-mcp",
     tools: [
       "transcribe — Transcribe a YouTube video or audio file",
-      "search — Search YouTube videos",
-      "get_metadata — Get video metadata (title, duration, channel)",
-      "list_transcripts — List available transcripts for a video",
+      "job_status — Check transcription job status",
+      "search — Search transcripts by content",
+      "list_transcripts — List available transcripts",
       "read_transcript — Read a transcript by ID",
+      "yt_search — Search YouTube for videos",
+      "list_channel_videos — List videos from a YouTube channel",
+      "get_metadata — Get video metadata (works with any yt-dlp-supported URL)",
       "get_comments — Get video comments",
+      "watch_later_sync — Sync Watch Later playlist",
+      "watch_later_status — Check Watch Later sync status",
     ],
     credentialsSchema: [
       {
@@ -82,6 +90,42 @@ export const MCP_SERVICES: McpService[] = [
     ],
   },
   {
+    id: "twitter-mcp",
+    name: "Twitter MCP",
+    description: "Twitter/X Research & Personal Account",
+    status: "active",
+    category: "data",
+    tools: [
+      "search_news — Curated news articles with headlines and summaries",
+      "search — Grok AI-powered opinion synthesis and sentiment analysis",
+      "get_post_counts — Volume analytics for a topic or ticker",
+      "get_user_tweets — Get recent tweets from a specific account",
+      "get_tweet — Get a single tweet by ID",
+      "get_thread — Get a full tweet thread",
+      "get_replies — Get replies to a tweet",
+      "my_feed — Your personal Twitter timeline",
+      "my_bookmarks — Your saved/bookmarked tweets",
+      "my_profile — Your Twitter profile info",
+      "get_article — Read a Twitter Article (long-form)",
+    ],
+    credentialsSchema: [
+      { key: "x_bearer_token", label: "X API v2 Bearer Token", required: false },
+      { key: "xai_api_key", label: "xAI/Grok API Key", required: false },
+      {
+        key: "twitter_auth_token",
+        label: "Twitter Auth Token (cookie)",
+        required: false,
+        hint: "Browser cookie 'auth_token' — needed for personal tools (feed, bookmarks, etc.)",
+      },
+      {
+        key: "twitter_ct0",
+        label: "Twitter ct0 (cookie)",
+        required: false,
+        hint: "Browser cookie 'ct0' — needed alongside auth_token",
+      },
+    ],
+  },
+  {
     id: "runner",
     name: "Agent Runner",
     description: "Claude Code Sessions",
@@ -109,8 +153,9 @@ export const MCP_SERVICES: McpService[] = [
 
 // In-cluster health check URLs for each service
 const SERVICE_HEALTH_URLS: Record<string, string> = {
-  "yt-mcp": "http://yt-mcp.production.svc.cluster.local:3003/healthz",
+  "yt-mcp": "http://media-mcp.production.svc.cluster.local:3003/healthz",
   "discord-mcp": "http://discord-mcp.production.svc.cluster.local:3003/healthz",
+  "twitter-mcp": "http://twitter-mcp.production.svc.cluster.local:3003/healthz",
   "runner": "http://claude-orchestrator.production.svc.cluster.local:8080/health",
   "market-research": "http://market-research.production.svc.cluster.local:3003/healthz",
 };

@@ -23,7 +23,7 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
   // Endpoint — clickable to copy
   api.getDomain().then((domain) => {
     if (domain) {
-      const url = `https://${service.id}.${domain}/mcp`;
+      const url = `https://${service.subdomain || service.id}.${domain}/mcp`;
       const endpoint = h("div", { className: "mt-1.5 flex items-center gap-2" });
       const urlText = h("span", { className: "font-mono text-[11px] text-text-3 cursor-pointer hover:text-accent transition-colors" }, url);
       urlText.title = "Click to copy";
@@ -47,7 +47,7 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
 
   const domain = await api.getDomain();
 
-  const mcpUrl = `https://${service.id}.${domain}/mcp`;
+  const mcpUrl = `https://${service.subdomain || service.id}.${domain}/mcp`;
 
   // Claude Code CLI
   const codeLabel = h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Claude Code (CLI)");

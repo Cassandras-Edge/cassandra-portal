@@ -35,3 +35,23 @@ steps:
           -H "Content-Type: application/strategic-merge-patch+json" \
           -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/restartedAt\":\"$NOW\"}}}}}" \
           "https://kubernetes.default.svc/apis/apps/v1/namespaces/production/deployments/portal"
+
+  - name: notify-discord
+    image: alpine/curl
+    when:
+      - status: [success, failure]
+    environment:
+      DISCORD_WEBHOOK_URL:
+        from_secret: discord_webhook_url
+    commands:
+      - |
+        if [ "$CI_PIPELINE_STATUS" = "success" ]; then
+          COLOR=3066993
+          EMOJI="✅"
+        else
+          COLOR=15158332
+          EMOJI="❌"
+        fi
+        curl -sf -H "Content-Type: application/json" \
+          -d "{\"embeds\":[{\"title\":\"$EMOJI $CI_REPO #$CI_PIPELINE_NUMBER\",\"description\":\"**Status:** $CI_PIPELINE_STATUS\n**Branch:** $CI_COMMIT_BRANCH\n**Commit:** \`$(echo $CI_COMMIT_SHA | cut -c1-7)\`\",\"color\":$COLOR,\"url\":\"$CI_PIPELINE_URL\"}]}" \
+          "$DISCORD_WEBHOOK_URL"
