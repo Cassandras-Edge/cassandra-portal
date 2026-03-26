@@ -153,7 +153,7 @@ function render() {
   // MCP Services section
   sidebarBody.appendChild(makeSectionLabel("MCP Services"));
 
-  for (const svc of allServices) {
+  for (const svc of allServices.filter((s) => s.id !== "runner")) {
     const isActive = selectedView?.type === "mcp" && selectedView.service.id === svc.id;
     const item = makeSidebarItem(
       svc.name,
