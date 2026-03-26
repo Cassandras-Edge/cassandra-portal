@@ -26,11 +26,11 @@ export interface McpService {
 export const MCP_SERVICES: McpService[] = [
   {
     id: "yt-mcp",
-    name: "Media MCP",
+    name: "YouTube",
     description: "Video & Audio Transcription",
     status: "active",
     category: "media",
-    subdomain: "media-mcp",
+    subdomain: "youtube",
     tools: [
       "transcribe — Transcribe a YouTube video or audio file",
       "job_status — Check transcription job status",
