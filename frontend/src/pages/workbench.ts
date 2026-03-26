@@ -538,13 +538,8 @@ async function renderConfigTab(container: HTMLElement, project: api.Project, ser
     qrSection.appendChild(connectBtn);
     qrSection.appendChild(qrDisplay);
     container.appendChild(qrSection);
-
-    // Divider
-    container.appendChild(h("div", { className: "flex items-center gap-3 mb-4" },
-      h("div", { className: "flex-1 border-t border-edge" }),
-      h("span", { className: "text-[10px] text-text-3 uppercase tracking-wider" }, "or paste token manually"),
-      h("div", { className: "flex-1 border-t border-edge" }),
-    ));
+    // QR is the only login method for Discord — skip manual token form
+    return;
   }
 
   // Cookie import shortcut for yt-mcp
