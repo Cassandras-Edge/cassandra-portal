@@ -25,7 +25,7 @@ steps:
         --frontend dockerfile.v0
         --local context=.
         --local dockerfile=.
-        --output type=image,name=172.20.0.161:30500/cassandra-portal:latest,push=true,registry.insecure=true
+        --output type=image,name=registry.infra.svc.cluster.local:5000/cassandra-portal:latest,push=true,registry.insecure=true
 
   - name: restart
     image: bitnami/kubectl:latest
