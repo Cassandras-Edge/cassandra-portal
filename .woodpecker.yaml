@@ -34,4 +34,4 @@ steps:
           -H "Authorization: Bearer $TOKEN" \
           -H "Content-Type: application/strategic-merge-patch+json" \
           -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/restartedAt\":\"$NOW\"}}}}}" \
-          "https://kubernetes.default.svc/apis/apps/v1/namespaces/production/deployments/cassandra-portal"
+          "https://kubernetes.default.svc/apis/apps/v1/namespaces/production/deployments/portal"
