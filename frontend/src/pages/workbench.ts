@@ -53,7 +53,7 @@ export async function renderServiceDetail(root: HTMLElement, project: api.Projec
   const codeLabel = h("div", { className: "text-[10px] font-medium text-text-2 uppercase tracking-wider mb-1.5" }, "Claude Code (CLI)");
   setup.appendChild(codeLabel);
 
-  const codeCmd = `claude mcp add --transport http ${service.id} ${mcpUrl}`;
+  const codeCmd = `claude mcp add ${service.id} --transport http ${mcpUrl}`;
   const codeBox = h("div", { className: "bg-surface-0 border border-edge rounded-md p-3 font-mono text-[11px] text-accent break-all leading-relaxed relative mb-4" });
   codeBox.appendChild(document.createTextNode(codeCmd));
   const codeCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(codeCmd, codeCopy) });
@@ -814,7 +814,8 @@ async function showKeyCreatedModal(container: HTMLElement, created: api.CreatedK
   const domain = await api.getDomain();
   const cliLabel = h("div", { className: "text-[10px] font-medium text-text-3 uppercase tracking-wider mb-1.5 mt-3" }, "Use with API key (for non-OAuth clients)");
   body.appendChild(cliLabel);
-  const cliCmd = `claude mcp add --transport http -H "Authorization: Bearer ${created.key}" ${service.id} https://${service.id}.${domain}/mcp`;
+  const subdomain = service.subdomain || service.id;
+  const cliCmd = `claude mcp add ${service.id} --transport http -H "Authorization: Bearer ${created.key}" https://${subdomain}.${domain}/mcp`;
   const cliBox = h("div", { className: "bg-surface-3 border border-edge rounded-md p-3 font-mono text-[11px] text-accent break-all leading-relaxed relative" });
   cliBox.appendChild(h("span", {}, cliCmd));
   const cliCopy = btn("Copy", { variant: "outline", size: "sm", onClick: () => copyToClipboard(cliCmd, cliCopy) });
