@@ -148,6 +148,20 @@ export const MCP_SERVICES: McpService[] = [
       "financial_statements — Income, balance sheet, cash flow",
     ],
   },
+  {
+    id: "reddit-mcp",
+    name: "Reddit",
+    description: "Reddit Browsing & Research",
+    status: "active",
+    category: "data",
+    subdomain: "reddit",
+    tools: [
+      "search — Search Reddit posts across all subreddits or within one",
+      "get_subreddit — Browse a subreddit's posts (hot/new/top/rising)",
+      "get_post — Read a post with its full comment thread",
+      "get_comment_thread — Drill into a specific comment chain",
+    ],
+  },
 ];
 
 // In-cluster health check URLs for each service
@@ -157,6 +171,7 @@ const SERVICE_HEALTH_URLS: Record<string, string> = {
   "twitter-mcp": "http://twitter-mcp.production.svc.cluster.local:3003/healthz",
   "runner": "http://claude-orchestrator.production.svc.cluster.local:8080/health",
   "market-research": "http://market-research.production.svc.cluster.local:3003/healthz",
+  "reddit-mcp": "http://reddit-mcp.production.svc.cluster.local:3004/healthz",
 };
 
 const app = new Hono<{ Bindings: Env }>();
